@@ -12,7 +12,7 @@ if existing_count > 0:
     db.close()
 else:
     # Load daily_food_nutrition_dataset.csv 
-    df1 = pd.read_csv("daily_food_nutrition_dataset.csv",
+    df1 = pd.read_csv("datasets/daily_food_nutrition_dataset.csv",
                       on_bad_lines='skip',
                       encoding='utf-8')
 
@@ -36,7 +36,7 @@ else:
     print(f"Daily food dataset: {count1} items loaded!")
 
     # Load Indian_Food_Nutrition_Processed.csv 
-    df2 = pd.read_csv("Indian_Food_Nutrition_Processed.csv",
+    df2 = pd.read_csv("datasets/Indian_Food_Nutrition_Processed.csv",
                       on_bad_lines='skip',
                       encoding='utf-8')
 
