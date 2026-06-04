@@ -29,8 +29,8 @@ def food_details(food_name):
         return jsonify({
 
             "message": "Food not found in dataset.",
-            "suggestion":"Please add nutrition details manually."
-        })
+            "suggestion":"Use /manual endpoint to enter nutrition values and save the food."
+        }), 404
     predicted_calories = predict_calories(
         result['protein'],
         result['carbs'],
@@ -40,9 +40,6 @@ def food_details(food_name):
     )
     #add prediction
     result['predicted_calorie_intake'] = predicted_calories
-
-    #recommendation
-    #recommendation = calorie_recommendation(predicted_calories)
 
     #add recommendation
     result['recommendation']= calorie_recommendation(predicted_calories)
@@ -165,6 +162,59 @@ def predict(user_id):
         "last_7_days": daily_calories,
         "predicted_calories": predicted,
         "recommendation": calorie_recommendation(predicted)
+    }), 200
+
+#MANUAL FOOD ENTRY
+@app.route("/manual", methods=["POST"])
+def manual_entry():
+
+    data = request.get_json()
+
+    food_name = data.get("food_name", "Custom Food")
+    protein = data.get("protein")
+    carbs = data.get("carbs")
+    fat = data.get("fat")
+    fiber = data.get("fiber")
+    sodium = data.get("sodium")
+
+    if not all([protein, carbs, fat, fiber, sodium]):
+        return jsonify({
+            "error": "Please enter all nutrition values",
+            "required":{
+                "protein (g)": "_",
+                "carbohydrates (g)": "_",
+                "fat (g)": "_",
+                "fiber (g)": "_",
+                "sodium (mg)": "_"
+            }
+        }), 400
+    
+    predicted = predict_calories(
+        protein,
+        carbs,
+        fat,
+        fiber,
+        sodium
+    )
+
+    db = get_db()
+
+    crud.add_custom_food(
+        db,
+        food_name = food_name,
+        calories= predicted,
+        protein = protein,
+        carbs = carbs,
+        fat = fat,
+        fibre = fiber,
+        sodium = sodium
+    )
+
+    return jsonify({
+        "food_name": food_name,
+        "predicted_calories": round(predicted,2),
+        "recommendation":calorie_recommendation(predicted),
+        "message": "Custom food saved successfully"
     }), 200
 
 if __name__ == "__main__":

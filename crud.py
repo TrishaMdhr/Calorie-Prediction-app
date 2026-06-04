@@ -92,3 +92,21 @@ def add_prediction(db: Session, user_id, predicted_calories):
 def get_user_predictions(db: Session, user_id: int):
     return db.query(PredictionData).filter(
         PredictionData.user_id == user_id).all()
+
+# ---- CUSTOM FOOD FUNCTIONS ----
+
+def add_custom_food(db, food_name, calories, protein, carbs, fat, fibre, sodium):
+    food = FoodItem(
+        food_name = food_name,
+        calories = calories,
+        protein = protein,
+        carbs = carbs,
+        fat = fat,
+        fibre = fibre,
+        sodium = sodium
+    )
+
+    db.add(food)
+    db.commit()
+    db.referesh(food)
+    return food
