@@ -6,8 +6,14 @@ from recommendation import calorie_recommendation
 from prediction import predict_calories
 import crud
 from sklearn.linear_model import LinearRegression
+import os
+from werkzeug.utils import secure_filename
+from predict_food import predict_food
 
 app= Flask(__name__)
+
+UPLOAD_FOLDER = "uploads"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 #helper to get db session
 def get_db():
     return SessionLocal()
@@ -125,7 +131,7 @@ def log_food():
 def daily_total(user_id):
     db = get_db()
     total_calories = crud.get_today_calories(db, user_id)
-    recommendation = calorie_recommendation(total_calories)
+    recommendation = calorie_recommendation(total_calories, is_daily=True)
     return jsonify({
         "user_id": user_id,
         "total_calories": total_calories,
@@ -161,7 +167,7 @@ def predict(user_id):
         "user_id": user_id,
         "last_7_days": daily_calories,
         "predicted_calories": predicted,
-        "recommendation": calorie_recommendation(predicted)
+        "recommendation": calorie_recommendation(predicted, is_daily=True)
     }), 200
 
 #MANUAL FOOD ENTRY
@@ -216,6 +222,49 @@ def manual_entry():
         "recommendation":calorie_recommendation(predicted),
         "message": "Custom food saved successfully"
     }), 200
+
+@app.route("/recognize", methods=["POST"])
+def recognize():
+    if "image" not in request.files:
+        return jsonify({"error": "No image uploaded"}), 400
+    
+    file = request.files["image"]
+    filename = secure_filename(file.filename)
+    path = os.path.join(UPLOAD_FOLDER, filename)
+    file.save(path)
+
+    result = predict_food(path)
+
+    if result == "Image not found":
+        return jsonify({"error": "Could not read image"}), 400
+    
+    food_name, confidence = result
+
+    nutrition = get_food_details(food_name)
+
+    if nutrition == "Food not found":
+        return jsonify({
+            "detected_food": food_name,
+            "confidence": confidence,
+            "message": "Food detected but not in database.",
+            "suggestion": "Use /manual endpoint to enter nutrition values."
+        }), 404
+    
+    predicted_calories = predict_calories(
+        nutrition['protein'],
+        nutrition['carbs'],
+        nutrition['fats'],
+        nutrition['fibre'],
+        nutrition['sodium']
+    )
+
+    nutrition['detected_food'] = food_name
+    nutrition['confidence'] = confidence
+    nutrition['predicted_calorie_intake'] = predicted_calories
+    nutrition['recommendation'] = calorie_recommendation(predicted_calories)
+
+    return jsonify(nutrition), 200
+
 
 if __name__ == "__main__":
     app.run(debug=True)

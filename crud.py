@@ -51,7 +51,8 @@ def get_food_by_id(db: Session, food_id: int):
 
 def add_food_log(db: Session, user_id, food_id, quantity):
     food = get_food_by_id(db, food_id)
-    calories_total = (quantity / 100) * food.calories
+    #calories_total = (quantity / 100) * food.calories
+    calories_total = food.calories * quantity
     log = FoodLog(
         user_id=user_id,
         food_id=food_id,
