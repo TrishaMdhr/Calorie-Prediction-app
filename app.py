@@ -12,7 +12,7 @@ from predict_food import predict_food
 
 app= Flask(__name__)
 
-UPLOAD_FOLDER = "uploads"
+UPLOAD_FOLDER = os.path.join(os.path.dirname (os.path.abspath(__file__)), "uploads")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 #helper to get db session
 def get_db():
