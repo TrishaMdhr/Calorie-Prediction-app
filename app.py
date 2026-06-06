@@ -229,6 +229,10 @@ def recognize():
         return jsonify({"error": "No image uploaded"}), 400
     
     file = request.files["image"]
+
+    if file.filename == "":
+        return jsonify({"error":  "No image uploaded"}), 400
+    
     filename = secure_filename(file.filename)
     path = os.path.join(UPLOAD_FOLDER, filename)
     file.save(path)
