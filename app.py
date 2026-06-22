@@ -14,7 +14,7 @@ app= Flask(__name__)
 
 UPLOAD_FOLDER = os.path.join(os.path.dirname (os.path.abspath(__file__)), "uploads")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-#helper to get db session
+
 def get_db():
     return SessionLocal()
 
@@ -30,7 +30,6 @@ def food_details(food_name):
 
     result = get_food_details(food_name)
     #food not found
-
     if result == "Food not found":
         return jsonify({
 
@@ -114,16 +113,18 @@ def log_food():
     user_id = data.get("user_id")
     food_id = data.get("food_id")
     quantity = data.get("quantity")
+    meal_type = data.get("meal_type")
 
-    if not user_id or not food_id or not quantity:
-        return jsonify({"error": "user_id, food_id and quantity are required"}), 400
+    if not user_id or not food_id or not quantity or not meal_type:
+        return jsonify({"error": "user_id, food_id, quantity and meal_type are required"}), 400
     
     db = get_db()
-    log = crud.add_food_log(db, user_id, food_id, quantity)
+    log = crud.add_food_log(db, user_id, food_id, quantity,meal_type)
     return jsonify({
         "message": "Food logged",
         "log_id": log.log_id,
-        "calories_total": log.calories_total
+        "calories_total": log.calories_total,
+        "meal_type": log.meal_type
     }), 201
 
 #DAILY TOTAL
@@ -223,6 +224,55 @@ def manual_entry():
         "message": "Custom food saved successfully"
     }), 200
 
+#Notifications
+@app.route("/notifications/<int:user_id>", methods=["GET"])
+def get_notifications(user_id):
+    db     = get_db()
+    notifs = crud.get_user_notifications(db, user_id)
+    result = [{
+        "notification_id": n.notification_id,
+        "message":         n.message,
+        "is_read":         n.is_read
+    } for n in notifs]
+    return jsonify({"notifications": result}), 200
+
+@app.route("/notifications/read/<int:notification_id>", methods=["PUT"])
+def mark_read(notification_id):
+    db = get_db()
+    crud.mark_notification_read(db, notification_id)
+    return jsonify({"message": "Notification marked as read"}), 200
+
+#Saved foods
+@app.route("/saved-foods",methods=["POST"])
+def save_food():
+    data = request.get_json()
+    user_id = data.get("user_id")
+    food_id = data.get("food_id")
+    meal_type = data.get("meal_type")
+    if not user_id or not food_id or not meal_type:
+        return jsonify({"error":"user_id, food_id and meal_type are required"}), 400
+    db = get_db()
+    saved = crud.save_food(db, user_id, food_id, meal_type)
+    return jsonify({"message": "Food saved", "saved_id": saved.saved_id}), 201
+
+@app.route("/saved-foods/<int:user_id>", methods=["GET"])
+def get_saved_foods(user_id):
+    db = get_db()
+    foods = crud.get_saved_foods(db, user_id)
+    result = [{
+        "saved_id": f.saved_id,
+        "food_id": f.food_id,
+        "meal_type": f.meal_type
+    } for f in foods]
+    return jsonify({"saved_foods": result}), 200
+
+@app.route("/saved-foods/delete/<int:saved_id>", methods=["DELETE"])
+def delete_saved_food(saved_id):
+    db= get_db()
+    crud.delete_saved_food(db, saved_id)
+    return jsonify({"message":"Saved food removed"}), 200
+
+#Cnn image recognition
 @app.route("/recognize", methods=["POST"])
 def recognize():
     if "image" not in request.files:
