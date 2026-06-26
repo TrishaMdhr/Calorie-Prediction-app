@@ -23,6 +23,11 @@ def get_db():
 def home():
     return "Calorie prediction running"
 
+#Health check
+@app.route("/health", methoods=["GET"])
+def health():
+    return jsonify({"status": "ok"})
+
 #  FOOD DETAILS
 #API route
 @app.route('/food/<food_name>')
