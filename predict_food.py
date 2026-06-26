@@ -4,7 +4,7 @@ import cv2
 import json
 
 # Load model
-model = tf.keras.models.load_model("food_model.h5")
+model = tf.keras.models.load_model("models/food_model.keras")
 
 # Load class names
 with open("class_names.json", "r") as f:
