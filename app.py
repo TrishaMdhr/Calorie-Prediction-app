@@ -24,7 +24,7 @@ def home():
     return "Calorie prediction running"
 
 #Health check
-@app.route("/health", methoods=["GET"])
+@app.route("/health", methods=["GET"])
 def health():
     return jsonify({"status": "ok"})
 
