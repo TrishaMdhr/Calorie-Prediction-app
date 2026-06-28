@@ -1,3 +1,19 @@
+# =============================================================================
+# FILE: backend/api/routes/food_routes.py
+# ROLE: Food database and CNN image prediction endpoints
+# -----------------------------------------------------------------------------
+# POST /predict           — CNN image recognition (multipart 'image' field)
+#                           Returns: food name, calories, confidence, food_id
+#                           Requires: food_model.keras in backend/ml/artifacts/
+# POST /manual            — Register a custom food item
+#                           Body: food_name, calories, protein, carbs, fat
+#                           Returns: food_id for use with POST /log
+# GET  /foods             — List all food items in the database
+# GET  /food/<name>       — Get a specific food item by name
+#
+# food_service.py handles in-memory food storage
+# ml_service.py wraps CNN prediction (predict.py + calorie_lookup.py)
+# =============================================================================
 from flask import Blueprint, jsonify, request
 
 from api.auth import token_required
@@ -45,23 +61,21 @@ def manual_entry():
     protein = data.get("protein")
     carbs = data.get("carbs")
     fat = data.get("fat")
-    fiber = data.get("fiber")
-    sodium = data.get("sodium")
+    fiber = data.get("fiber", 0.0)
+    sodium = data.get("sodium", 0.0)
     calories = data.get("calories")
 
-    required = [protein, carbs, fat, fiber, sodium]
+    required = [protein, carbs, fat]
     if not all(v is not None for v in required):
         return jsonify({
-            "error": "Please enter all nutrition values",
+            "error": "Please enter protein, carbs, and fat values",
             "required": {
                 "protein (g)": "float",
                 "carbohydrates (g)": "float",
                 "fat (g)": "float",
-                "fiber (g)": "float",
-                "sodium (mg)": "float",
-                "calories (optional)": "float — Atwater estimate used if omitted",
             },
         }), 400
+
 
     food = food_service.create_food_from_macros(
         food_name, protein, carbs, fat, fiber, sodium, calories

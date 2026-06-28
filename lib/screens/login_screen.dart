@@ -1,4 +1,15 @@
+// =============================================================================
+// FILE: lib/screens/login_screen.dart
+// ROLE: Login screen — email + password authentication
+// -----------------------------------------------------------------------------
+// - Validates email format and password strength client-side
+// - Calls AppProvider.loginAction() → POST /login → stores JWT token
+// - Shows loading spinner during server call
+// - Offline fallback: checks locally registered users in SharedPreferences
+// - On success → navigates to DashboardScreen
+// =============================================================================
 import 'package:flutter/material.dart';
+
 import 'package:provider/provider.dart';
 import '../theme.dart';
 import '../providers/app_provider.dart';
@@ -35,7 +46,7 @@ class _LoginScreenState extends State<LoginScreen> {
       p.length >= 8 &&
           RegExp(r'[!@#\$%^&*(),.?":{}|<>]').hasMatch(p);
 
-  void _login() {
+  void _login() async {
     final email = _emailCtrl.text.trim();
     final pass = _passCtrl.text;
 
@@ -59,31 +70,31 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (_emailError != null || _passError != null) return;
 
-    final provider = Provider.of<AppProvider>(context, listen: false);
-    final exists = provider.checkUserExists(email, pass);
+    // Show loading spinner
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
 
-    if (!exists) {
-      final emailExists = provider.emailExists(email);
+    final provider = Provider.of<AppProvider>(context, listen: false);
+    final error = await provider.loginAction(email, pass);
+
+    if (!mounted) return;
+    Navigator.pop(context); // Close spinner
+
+    if (error != null) {
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: Text(emailExists
-                ? 'Incorrect password. Please try again.'
-                : 'No account found. Please sign up first!'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
-        );
+        ..showSnackBar(SnackBar(
+          content: Text(error),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ));
       return;
     }
 
-    provider.user.name = provider.getNameByEmail(email);
-    provider.user.email = email;
-    provider.login(email);
-
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
-
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (_) => const DashboardScreen()),

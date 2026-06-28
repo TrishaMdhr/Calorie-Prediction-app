@@ -1,4 +1,13 @@
+// =============================================================================
+// FILE: lib/main.dart
+// ROLE: Application entry point
+// -----------------------------------------------------------------------------
+// - Initialises AppProvider (global state + all backend API calls)
+// - Applies the global AppTheme
+// - Boots into OpeningScreen (splash / welcome)
+// =============================================================================
 import 'package:flutter/material.dart';
+
 import 'package:provider/provider.dart';
 import 'theme.dart';
 import 'providers/app_provider.dart';

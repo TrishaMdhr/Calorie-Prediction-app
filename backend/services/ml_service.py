@@ -1,6 +1,15 @@
+# =============================================================================
+# FILE: backend/services/ml_service.py
+# ROLE: Machine Learning model wrapper service
+# -----------------------------------------------------------------------------
+# - Checks availability of CNN model (tensorflow/keras) and Regression imports
+# - Interfaces with backend/ml/predict.py to classify uploaded food images
+# - Interfaces with backend/ml/regression.py to perform user calorie prediction
+# =============================================================================
 import os
 import tempfile
 from pathlib import Path
+
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "ml" / "data"
 REGRESSION_DATASET = DATA_DIR / "daily_food_nutrition_dataset.csv"
@@ -16,11 +25,8 @@ def is_ml_available():
 
 
 def is_regression_available():
-    if not REGRESSION_DATASET.is_file():
-        return False
     try:
         import numpy  # noqa: F401
-        import pandas  # noqa: F401
         import sklearn  # noqa: F401
         return True
     except ImportError:
@@ -59,7 +65,8 @@ def predict_from_image(file_storage):
     }
 
 
-def predict_future_calories(day):
+def predict_future_calories(user_id, day):
     from ml.regression import predict_future_calories as _predict_future
 
-    return _predict_future(day)
+    return _predict_future(user_id, day)
+

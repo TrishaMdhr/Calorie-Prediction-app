@@ -1,4 +1,26 @@
+// =============================================================================
+// FILE: lib/screens/log_food_screen.dart
+// ROLE: Food logging screen — 3 input methods
+// -----------------------------------------------------------------------------
+// TAB 0 — SCAN FOOD (_ScanPanel):
+//   · Picks image from camera/gallery
+//   · Sends to POST http://10.0.2.2:5000/predict (CNN food recognition)
+//   · _saveToLog() → AppProvider.addFoodLog() → syncs to backend
+//
+// TAB 1 — ENTER MANUALLY (_ManualPanel):
+//   · User types food name, calories, protein, carbs, fat
+//   · _saveToLog() → AppProvider.addFoodLog() → syncs to backend
+//   · Bookmark icon → AppProvider.saveToMacros() (saves for reuse)
+//
+// TAB 2 — SAVED FOOD MACROS (_SavedMacrosPanel):
+//   · Lists AppProvider.savedMacros
+//   · "+" button → AppProvider.addFoodLog() → syncs to backend
+//   · Trash icon → AppProvider.deleteMacro()
+//
+// All panels respect the Meal Type selector (Breakfast/Lunch/Dinner/Snacks)
+// =============================================================================
 import 'dart:convert';
+
 import 'dart:typed_data';
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -10,8 +32,7 @@ import '../providers/app_provider.dart';
 import '../models/food_log_model.dart';
 import '../services/food_dataset_service.dart';
 
-// ── Tero Flask CNN server URL ──
-//const _kFlaskUrl = 'http://192.168.1.70:5000/predict';
+// Flask CNN server URL for food image classification
 const _kFlaskUrl = 'http://10.0.2.2:5000/predict';
 
 class LogFoodScreen extends StatefulWidget {
@@ -196,7 +217,7 @@ class _ScanPanelState extends State<_ScanPanel> {
     });
 
     try {
-      // ── Tero CNN Flask server ma call garcha ──
+      // Call the CNN Flask server for image recognition
       final request = http.MultipartRequest(
         'POST',
         Uri.parse(_kFlaskUrl),
@@ -229,7 +250,7 @@ class _ScanPanelState extends State<_ScanPanel> {
           final calories = (data['calories'] as num).toInt();
           final confidence = (data['confidence'] as num).toDouble();
 
-          // Dataset ma search garcha extra macros ko lagi
+          // Query local dataset for macronutrients info
           final match = _datasetService.findMatch(foodName);
 
           setState(() {

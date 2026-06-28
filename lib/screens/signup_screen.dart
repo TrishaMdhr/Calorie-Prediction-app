@@ -1,7 +1,17 @@
+// =============================================================================
+// FILE: lib/screens/signup_screen.dart
+// ROLE: Registration screen — create a new user account
+// -----------------------------------------------------------------------------
+// - Validates name, email, password, confirm-password client-side
+// - Calls AppProvider.registerAction() → POST /register → stores JWT token
+// - Shows loading spinner during server call
+// - Offline fallback: saves to local SharedPreferences if server unreachable
+// - On success → navigates to DashboardScreen
+// =============================================================================
 import 'package:flutter/material.dart';
+
 import 'package:provider/provider.dart';
 import '../theme.dart';
-import '../models/user_model.dart';
 import '../providers/app_provider.dart';
 import 'login_screen.dart';
 import 'dashboard_screen.dart';
@@ -34,7 +44,7 @@ class _SignupScreenState extends State<SignupScreen> {
     return RegExp(r'^[\w\.\-]+@[\w\-]+\.[a-zA-Z]{2,}$').hasMatch(e);
   }
 
-  void _signup() {
+  void _signup() async {
     final name = _nameCtrl.text.trim();
     final email = _emailCtrl.text.trim();
     final pass = _passCtrl.text;
@@ -78,11 +88,29 @@ class _SignupScreenState extends State<SignupScreen> {
 
     if ([_nameError, _emailError, _passError, _confirmError]
         .every((e) => e == null)) {
-      Provider.of<AppProvider>(context, listen: false)
-          .registerUser(email, pass, name);
+      // Show loading spinner
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CircularProgressIndicator()),
+      );
 
-      final user = UserModel(name: name, email: email);
-      Provider.of<AppProvider>(context, listen: false).setUser(user);
+      final provider = Provider.of<AppProvider>(context, listen: false);
+      final error = await provider.registerAction(email, pass, name);
+
+      if (!mounted) return;
+      Navigator.pop(context); // Close spinner
+
+      if (error != null) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(
+            content: Text(error),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ));
+        return;
+      }
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -96,13 +124,13 @@ class _SignupScreenState extends State<SignupScreen> {
         if (mounted) {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(
-                builder: (_) => const DashboardScreen()),
+            MaterialPageRoute(builder: (_) => const DashboardScreen()),
           );
         }
       });
     }
   }
+
 
   @override
   void dispose() {

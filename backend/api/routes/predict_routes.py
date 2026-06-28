@@ -1,5 +1,21 @@
+# =============================================================================
+# FILE: backend/api/routes/predict_routes.py
+# ROLE: Machine Learning prediction endpoints
+# -----------------------------------------------------------------------------
+# POST /predict              — CNN food image prediction (no auth needed)
+#                              Delegates to ml_service.predict_from_image()
+#
+# GET  /predict/future       — Linear Regression calorie prediction (JWT required)
+#   · Query param: ?day=1 (how many days ahead to predict)
+#   · Delegates to ml_service.predict_future_calories(user_id, day)
+#   · ml/regression.py trains sklearn.LinearRegression on user's log history
+#   · Returns: predicted_calories, recommendation
+#
+# Checks ml_service.is_regression_available() before calling (needs sklearn+numpy)
+# =============================================================================
 from flask import Blueprint, jsonify, request
 
+from api.auth import get_current_user_id, token_required
 from api.helpers import recommendations_for_calories
 from services import food_service, ml_service
 
@@ -44,19 +60,21 @@ def predict_food_image():
 
 
 @predict_bp.route("/predict/future", methods=["GET"])
+@token_required
 def predict_future_calories():
     if not ml_service.is_regression_available():
         return jsonify({
             "error": "Regression model not available",
-            "hint": "Install requirements.txt and ensure backend/ml/data/ contains the CSV datasets.",
+            "hint": "Install scikit-learn and numpy: pip install scikit-learn numpy",
         }), 503
 
     day = request.args.get("day", type=int)
     if day is None or day < 1:
         return jsonify({"error": "day parameter required (positive integer)"}), 400
 
+    user_id = get_current_user_id()
     try:
-        calories = ml_service.predict_future_calories(day)
+        calories = ml_service.predict_future_calories(user_id, day)
     except FileNotFoundError:
         return jsonify({"error": "Regression dataset not found in backend/ml/data/"}), 503
     except Exception as exc:
@@ -66,3 +84,4 @@ def predict_future_calories():
     formatted, _ = recommendations_for_calories(calories, is_daily=True)
     response.update(formatted)
     return jsonify(response), 200
+
