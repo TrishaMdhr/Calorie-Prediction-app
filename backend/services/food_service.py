@@ -89,3 +89,11 @@ def create_food_from_macros(food_name, protein, carbs, fat, fibre, sodium, calor
     if calories is None:
         calories = estimate_calories(protein, carbs, fat)
     return add_custom_food(food_name, calories, protein, carbs, fat, fibre, sodium)
+
+
+def get_or_create_from_prediction(food_name, calories):
+    """Register CNN-predicted food in the catalog so it can be logged via /log."""
+    existing = get_food_by_name(food_name)
+    if existing:
+        return existing
+    return add_custom_food(food_name, calories, 0, 0, 0, 0, 0)
