@@ -48,6 +48,7 @@ class AppProvider extends ChangeNotifier {
   // Server-fetched data
   List<String> serverRecommendations = [];
   List<Map<String, dynamic>> serverAlerts = [];
+  Map<String, dynamic>? regressionMetrics;
 
   // Auth token
   String? _authToken;
@@ -398,11 +399,15 @@ class AppProvider extends ChangeNotifier {
       final resp = await http.get(
         Uri.parse('$_kBaseUrl/predict/future?day=$dayOffset'),
         headers: _authHeaders,
-      ).timeout(const Duration(seconds: 15));
+      ).timeout(const Duration(seconds: 10));
 
       if (resp.statusCode == 200) {
         final data = jsonDecode(resp.body);
-        return (data['predicted_calories'] as num?)?.toDouble();
+        if (data.containsKey('evaluation_metrics')) {
+          regressionMetrics = data['evaluation_metrics'] as Map<String, dynamic>;
+        }
+        notifyListeners();
+        return (data['predicted_calories'] as num).toDouble();
       }
     } catch (_) {}
     return null;

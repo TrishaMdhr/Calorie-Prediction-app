@@ -70,3 +70,10 @@ def predict_future_calories(user_id, day):
 
     return _predict_future(user_id, day)
 
+
+def get_regression_metrics(user_id):
+    from ml.regression import evaluate_regression_metrics
+
+    return evaluate_regression_metrics(user_id)
+
+

@@ -50,3 +50,53 @@ def predict_future_calories(user_id, day_offset):
     pred_kcal = float(prediction[0])
     return round(max(500.0, min(8000.0, pred_kcal)), 2)
 
+
+def evaluate_regression_metrics(user_id):
+    """Evaluate performance metrics (MAE, RMSE, R²) for the Linear Regression model."""
+    # Fetch historical daily logs for the user (up to last 30 days)
+    history = tracking_service.get_daily_history(user_id, days=30)
+    y_data = [h["total_calories"] for h in history]
+
+    # If the user doesn't have at least 3 days of logs, use synthetic fallback baseline
+    # hovering around daily calorie goal so we always have metrics to showcase.
+    has_real_data = len(y_data) >= 3
+    if not has_real_data:
+        goal = user_service.get_daily_goal(user_id)
+        y_data = [
+            round(goal * 0.95),
+            round(goal * 1.05),
+            round(goal * 0.97),
+            round(goal * 1.03),
+            round(goal * 0.99),
+            round(goal * 1.01)
+        ]
+
+    y = np.array(y_data)
+    X = np.array(range(1, len(y) + 1)).reshape(-1, 1)
+
+    model = LinearRegression()
+    model.fit(X, y)
+    y_pred = model.predict(X)
+
+    mae = float(np.mean(np.abs(y - y_pred)))
+    mse = float(np.mean((y - y_pred) ** 2))
+    rmse = float(np.sqrt(mse))
+
+    # Calculate R2 score (Coefficient of Determination)
+    y_mean = np.mean(y)
+    ss_tot = np.sum((y - y_mean) ** 2)
+    if ss_tot == 0:
+        r2 = 1.0
+    else:
+        ss_res = np.sum((y - y_pred) ** 2)
+        r2 = float(1.0 - (ss_res / ss_tot))
+
+    return {
+        "mae": round(mae, 2),
+        "rmse": round(rmse, 2),
+        "r2": round(r2, 4),
+        "sample_size": len(y_data),
+        "has_real_data": has_real_data
+    }
+
+

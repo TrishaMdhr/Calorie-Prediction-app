@@ -75,13 +75,32 @@ def predict_future_calories():
     user_id = get_current_user_id()
     try:
         calories = ml_service.predict_future_calories(user_id, day)
+        metrics = ml_service.get_regression_metrics(user_id)
     except FileNotFoundError:
         return jsonify({"error": "Regression dataset not found in backend/ml/data/"}), 503
     except Exception as exc:
         return jsonify({"error": f"Prediction failed: {exc}"}), 500
 
-    response = {"day": day, "predicted_calories": calories}
+    response = {"day": day, "predicted_calories": calories, "evaluation_metrics": metrics}
     formatted, _ = recommendations_for_calories(calories, is_daily=True)
     response.update(formatted)
     return jsonify(response), 200
+
+
+@predict_bp.route("/predict/metrics", methods=["GET"])
+@token_required
+def get_predict_metrics():
+    if not ml_service.is_regression_available():
+        return jsonify({
+            "error": "Regression model not available",
+            "hint": "Install scikit-learn and numpy: pip install scikit-learn numpy",
+        }), 503
+
+    user_id = get_current_user_id()
+    try:
+        metrics = ml_service.get_regression_metrics(user_id)
+        return jsonify(metrics), 200
+    except Exception as exc:
+        return jsonify({"error": f"Failed to retrieve metrics: {exc}"}), 500
+
 

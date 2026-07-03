@@ -5,5 +5,10 @@ __pycache__/
 .venv/
 venv/
 
-# ML artifacts (large — train locally or copy in)
+# ML model weights (large files — copy in locally, do not commit)
 ml/artifacts/*.keras
+ml/artifacts/*.h5
+*.h5
+
+# Auto-generated SQLite database (re-created on first run)
+*.db

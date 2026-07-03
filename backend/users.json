@@ -1,9 +1,0 @@
-{
-    "1": {
-        "user_id": 1,
-        "name": "Verification User",
-        "email": "verify@test.com",
-        "password": "$2b$12$3KY0rbIU9o2AMrSwKOQcH.U.Vm4NDXnm3hGkoF7DbEMJceRnHN65u",
-        "daily_calorie_goal": 2400
-    }
-}

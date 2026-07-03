@@ -266,6 +266,11 @@ class _CaloriePredictionScreenState extends State<CaloriePredictionScreen> {
             ),
             const SizedBox(height: 16),
 
+            if (provider.regressionMetrics != null) ...[
+              _buildMetricsCard(context, provider.regressionMetrics!, isDark),
+              const SizedBox(height: 16),
+            ],
+
             // ── Done eating / Start new day button ───────────────
             if (!dayComplete)
               SizedBox(
@@ -503,6 +508,132 @@ class _CaloriePredictionScreenState extends State<CaloriePredictionScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildMetricsCard(BuildContext context, Map<String, dynamic> metrics, bool isDark) {
+    final cardColor = isDark ? const Color(0xFF2C2C2C) : AppTheme.surface;
+    final textColor = isDark ? Colors.white : Colors.black;
+    final subTextColor = isDark ? Colors.white70 : Colors.grey;
+    final hasRealData = metrics['has_real_data'] as bool? ?? false;
+    final sampleSize = metrics['sample_size'] as int? ?? 0;
+    
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'ML MODEL METRICS',
+                style: TextStyle(
+                  color: Theme.of(context).primaryColor,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                  letterSpacing: 1,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: hasRealData 
+                      ? Colors.green.withAlpha(38) 
+                      : Colors.orange.withAlpha(38),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  hasRealData ? 'Real History' : 'Goal Baseline',
+                  style: TextStyle(
+                    color: hasRealData ? Colors.green : Colors.orange,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Linear Regression performance metrics evaluated on your daily calorie trends:',
+            style: TextStyle(color: subTextColor, fontSize: 12),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildMetricItem('MAE', '${metrics['mae']}', 'kcal', 'Mean Abs Error', subTextColor, textColor),
+              _buildMetricItem('RMSE', '${metrics['rmse']}', 'kcal', 'Root Mean Sq Error', subTextColor, textColor),
+              _buildMetricItem('R²', '${metrics['r2']}', '', 'R-Squared', subTextColor, textColor),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Divider(color: isDark ? Colors.grey.shade700 : Colors.grey.shade200, height: 1),
+          const SizedBox(height: 8),
+          Text(
+            'Sample Size: $sampleSize day${sampleSize != 1 ? 's' : ''} of history used for training',
+            style: TextStyle(color: subTextColor, fontSize: 10, fontStyle: FontStyle.italic),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMetricItem(String label, String value, String unit, String desc, Color subTextColor, Color textColor) {
+    return Column(
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: subTextColor,
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 0.5,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: textColor,
+              ),
+            ),
+            if (unit.isNotEmpty) ...[
+              const SizedBox(width: 2),
+              Text(
+                unit,
+                style: TextStyle(
+                  fontSize: 10,
+                  color: subTextColor,
+                ),
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          desc,
+          style: TextStyle(
+            color: subTextColor.withAlpha(180),
+            fontSize: 8,
+          ),
+        ),
+      ],
     );
   }
 }

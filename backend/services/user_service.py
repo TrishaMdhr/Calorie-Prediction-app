@@ -1,129 +1,70 @@
 # =============================================================================
 # FILE: backend/services/user_service.py
-# ROLE: User storage and authentication helper
+# ROLE: User storage and authentication helper (Database-backed)
 # -----------------------------------------------------------------------------
-# - Handles local JSON-based persistence of user accounts in users.json
-# - Performs bcrypt password hashing and verification
+# - Handles MySQL-based persistence of user accounts
+# - Performs password hashing and verification via crud layer
 # - Provides functions to register, log in, find users, and update daily calorie goal
 # =============================================================================
 
-import json
-import os
-import bcrypt
-
 from config import Config
+from database import SessionLocal
+import crud
 
-SERVICE_DIR = os.path.dirname(os.path.abspath(__file__))
-USERS_FILE = os.path.join(os.path.dirname(SERVICE_DIR), "users.json")
-
-_users = {}
-_next_user_id = 1
-
-
-def _load_users_from_file():
-    global _users, _next_user_id
-    _users = {}
-    _next_user_id = 1
-
-    if not os.path.exists(USERS_FILE):
-        return
-
-    try:
-        with open(USERS_FILE, "r") as f:
-            data = json.load(f)
-            for uid_str, user in data.items():
-                user_id = int(uid_str)
-                # Keep user_id as int
-                user["user_id"] = user_id
-                _users[user_id] = user
-                _users[user["email"].strip().lower()] = user
-                if user_id >= _next_user_id:
-                    _next_user_id = user_id + 1
-    except Exception as e:
-        print(f"Error loading users from file: {e}")
-
-
-def _save_users_to_file():
-    try:
-        # Only save integer keys to avoid duplicate entries in JSON
-        serializable = {
-            str(k): v for k, v in _users.items()
-            if isinstance(k, int)
-        }
-        with open(USERS_FILE, "w") as f:
-            json.dump(serializable, f, indent=4)
-    except Exception as e:
-        print(f"Error saving users to file: {e}")
-
-
-# Load users immediately on import
-_load_users_from_file()
-
-
-def _hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
-
-
-def _verify_password(plain: str, hashed: str) -> bool:
-    return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
+def _user_to_dict(user):
+    if not user:
+        return None
+    return {
+        "user_id": user.user_id,
+        "name": user.name,
+        "email": user.email,
+        "password": user.password,
+        "daily_calorie_goal": user.daily_goal,
+    }
 
 
 def register_user(name, email, password, daily_calorie_goal=None):
     email = email.strip().lower()
 
-    if get_user_by_email(email):
-        return None, "Email already registered"
+    with SessionLocal() as db:
+        if crud.get_user_by_email(db, email):
+            return None, "Email already registered"
 
-    global _next_user_id
-    user_id = _next_user_id
-    _next_user_id += 1
-
-    user = {
-        "user_id": user_id,
-        "name": name,
-        "email": email,
-        "password": _hash_password(password),
-        "daily_calorie_goal": daily_calorie_goal or Config.DEFAULT_DAILY_GOAL,
-    }
-    _users[user_id] = user
-    _users[email] = user  # email index
-
-    _save_users_to_file()
-    return user, None
+        goal = daily_calorie_goal or Config.DEFAULT_DAILY_GOAL
+        db_user = crud.create_user(db, name, email, password, daily_goal=goal)
+        return _user_to_dict(db_user), None
 
 
 def get_user_by_email(email):
-    return _users.get(email.strip().lower())
+    with SessionLocal() as db:
+        db_user = crud.get_user_by_email(db, email)
+        return _user_to_dict(db_user)
 
 
 def get_user_by_id(user_id):
-    user = _users.get(user_id)
-    if user and isinstance(user, dict) and "user_id" in user:
-        return user
-    return None
+    with SessionLocal() as db:
+        db_user = crud.get_user_by_id(db, user_id)
+        return _user_to_dict(db_user)
 
 
 def login_user(email, password):
-    user = get_user_by_email(email)
-    if not user:
-        return None
-    if _verify_password(password, user["password"]):
-        return user
-    return None
+    with SessionLocal() as db:
+        db_user = crud.login_user(db, email, password)
+        return _user_to_dict(db_user)
 
 
 def get_daily_goal(user_id):
-    user = get_user_by_id(user_id)
-    if user:
-        return user["daily_calorie_goal"]
-    return Config.DEFAULT_DAILY_GOAL
+    with SessionLocal() as db:
+        db_user = crud.get_user_by_id(db, user_id)
+        if db_user:
+            return db_user.daily_goal
+        return Config.DEFAULT_DAILY_GOAL
 
 
 def update_daily_goal(user_id, goal):
-    user = get_user_by_id(user_id)
-    if user:
-        user["daily_calorie_goal"] = goal
-        _save_users_to_file()
-        return True
-    return False
-
+    with SessionLocal() as db:
+        db_user = crud.get_user_by_id(db, user_id)
+        if db_user:
+            crud.set_manual_goal(db, user_id, goal)
+            return True
+        return False
