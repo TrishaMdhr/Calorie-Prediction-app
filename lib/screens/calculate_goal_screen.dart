@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'package:provider/provider.dart';
 import '../theme.dart';
 import '../providers/app_provider.dart';
@@ -132,12 +133,18 @@ class _CalculateGoalScreenState extends State<CalculateGoalScreen> {
           ? 'Please enter valid age'
           : null;
       _weightError = (_weightCtrl.text.isEmpty ||
-          double.tryParse(_weightCtrl.text) == null)
-          ? 'Please enter valid weight'
+          double.tryParse(_weightCtrl.text) == null ||
+          double.parse(_weightCtrl.text) <= 0)
+          ? 'Please enter a valid weight (must be greater than 0)'
           : null;
       _heightError =
       (_heightFeet == null || _heightInch == null)
           ? 'Please select height'
+          : null;
+      _ageError = (_ageCtrl.text.isEmpty ||
+          int.tryParse(_ageCtrl.text) == null ||
+          int.parse(_ageCtrl.text) <= 0)
+          ? 'Please enter a valid age (must be greater than 0)'
           : null;
     });
 

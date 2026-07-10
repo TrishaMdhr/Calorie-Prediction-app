@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme.dart';
 import '../providers/app_provider.dart';
-import 'opening_screen.dart';
+import 'login_screen.dart';
 import 'calculate_goal_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -15,6 +15,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late TextEditingController _nameCtrl;
   late TextEditingController _emailCtrl;
   bool _editing = false;
+  String? _nameError, _emailError;
+
+  bool _validateEmail(String e) {
+    if (e.isEmpty) return false;
+    if (!e.contains('@')) return false;
+    if (!e.contains('.')) return false;
+    final parts = e.split('@');
+    if (parts.length != 2) return false;
+    if (parts[0].isEmpty) return false;
+    if (!parts[1].contains('.')) return false;
+    final domainParts = parts[1].split('.');
+    if (domainParts.last.length < 2) return false;
+    return RegExp(r'^[\w\.\-]+@[\w\-]+\.[a-zA-Z]{2,}$').hasMatch(e);
+  }
 
   @override
   void initState() {
@@ -105,25 +119,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 8),
               TextField(
                 controller: _nameCtrl,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Full Name',
-                  prefixIcon: Icon(Icons.person_outline),
+                  prefixIcon: const Icon(Icons.person_outline),
+                  errorText: _nameError,
                 ),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _emailCtrl,
                 keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Email Address',
-                  prefixIcon: Icon(Icons.email_outlined),
+                  prefixIcon: const Icon(Icons.email_outlined),
+                  errorText: _emailError,
                 ),
               ),
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () {
-                  provider.updateNameEmail(
-                      _nameCtrl.text, _emailCtrl.text);
+                  final name = _nameCtrl.text.trim();
+                  final email = _emailCtrl.text.trim();
+
+                  setState(() {
+                    _nameError = name.isEmpty
+                        ? 'Name cannot be empty'
+                        : (name.length < 2
+                        ? 'Name must be at least 2 characters'
+                        : null);
+                    _emailError = email.isEmpty
+                        ? 'Email cannot be empty'
+                        : (!_validateEmail(email)
+                        ? 'Please enter a valid email'
+                        : null);
+                  });
+
+                  if (_nameError != null || _emailError != null) return;
+
+                  provider.updateNameEmail(name, email);
                   setState(() => _editing = false);
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
@@ -136,8 +169,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 8),
               TextButton(
-                onPressed: () =>
-                    setState(() => _editing = false),
+                onPressed: () => setState(() {
+                  _editing = false;
+                  _nameError = null;
+                  _emailError = null;
+                  // Revert unsaved edits back to current profile values
+                  _nameCtrl.text = user.name;
+                  _emailCtrl.text = user.email;
+                }),
                 child: const Text('Cancel'),
               ),
             ],
@@ -245,15 +284,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             // ── Logout ───────────────────────────────
             ElevatedButton.icon(
-              onPressed: () {
-                provider.logout();
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(
-                      builder: (_) => const OpeningScreen()),
-                      (_) => false,
-                );
-              },
+              onPressed: () => _confirmLogout(context, provider),
               icon: const Icon(Icons.logout),
               label: const Text('Log Out'),
               style: ElevatedButton.styleFrom(
@@ -262,6 +293,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 80), // ← 40 bata 80 ma change gareko
           ],
         ),
+      ),
+    );
+  }
+
+  void _confirmLogout(BuildContext context, AppProvider provider) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20)),
+        title: const Text('Log Out?'),
+        content: const Text('Are you sure you want to log out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context); // close dialog
+              provider.logout();
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                    (_) => false,
+              );
+            },
+            style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.danger),
+            child: const Text('Log Out'),
+          ),
+        ],
       ),
     );
   }

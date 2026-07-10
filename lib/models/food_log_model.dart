@@ -1,4 +1,5 @@
 class FoodLog {
+  int? logId; // server-assigned ID for deletion
   String name;
   double calories;
   double protein;
@@ -8,6 +9,7 @@ class FoodLog {
   DateTime loggedAt;
 
   FoodLog({
+    this.logId,
     required this.name,
     required this.calories,
     this.protein = 0,

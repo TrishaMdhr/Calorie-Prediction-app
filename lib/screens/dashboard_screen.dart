@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'package:provider/provider.dart';
 import '../theme.dart';
 import '../providers/app_provider.dart';
@@ -17,9 +18,24 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   int _currentIndex = 0;
 
+  @override
+  void initState() {
+    super.initState();
+    // Fetch server data after first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = Provider.of<AppProvider>(context, listen: false);
+      provider.fetchTodayLogs();
+      provider.fetchTodayCaloriesAndRecommendations();
+    });
+  }
+
   void _tryLogFood(BuildContext context) {
     final provider =
     Provider.of<AppProvider>(context, listen: false);
+    if (provider.dayCompleted) {
+      _showDayCompleteDialog(context);
+      return;
+    }
     if (!provider.hasSetGoal) {
       _showSetGoalDialog(context);
     } else {
@@ -28,6 +44,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
         MaterialPageRoute(builder: (_) => const LogFoodScreen()),
       );
     }
+  }
+
+  void _showDayCompleteDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20)),
+        title: const Row(children: [
+          Text('✅ '),
+          Text('Day Already Marked Done'),
+        ]),
+        content: const Text(
+          'You already marked today as complete. Go to the Prediction '
+              'tab and tap "Undo — Add More Food" if you want to log '
+              'more food today.',
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Got it'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showSetGoalDialog(BuildContext context) {
@@ -283,7 +324,6 @@ class _HomeBody extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // ── Macros Row ───────────────────────────
             Row(
               children: [
                 _MacroCard(
@@ -304,8 +344,62 @@ class _HomeBody extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
+            // ── Dietary Insights & Alerts ─────────────
+            if (provider.serverAlerts.isNotEmpty || provider.serverRecommendations.isNotEmpty) ...[
+              Text(
+                'Dietary Insights & Alerts',
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : Colors.black87),
+              ),
+              const SizedBox(height: 8),
+              ...provider.serverAlerts.map((alert) => Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.red.withOpacity(0.2)),
+                ),
+                child: Row(children: [
+                  const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      alert['message'] as String? ?? '',
+                      style: const TextStyle(
+                          color: Colors.red, fontSize: 13, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ]),
+              )),
+              ...provider.serverRecommendations.map((rec) => Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppTheme.primary.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppTheme.primary.withOpacity(0.2)),
+                ),
+                child: Row(children: [
+                  Icon(Icons.lightbulb_outline, color: AppTheme.primary, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      rec,
+                      style: TextStyle(
+                          color: AppTheme.primary, fontSize: 13, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ]),
+              )),
+              const SizedBox(height: 8),
+            ],
+
             // ── Set Goal Button (separate, below macros)
             if (!provider.hasSetGoal) ...[
+
               ElevatedButton.icon(
                 onPressed: () => Navigator.push(
                   context,
