@@ -1,4 +1,3 @@
-
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -24,6 +23,7 @@ class AppProvider extends ChangeNotifier {
   List<String> serverRecommendations = [];
   List<Map<String, dynamic>> serverAlerts = [];
   Map<String, dynamic>? regressionMetrics;
+  String? predictionRecommendation;
 
   // Auth token
   String? _authToken;
@@ -293,7 +293,6 @@ class AppProvider extends ChangeNotifier {
       // Server sync failure is non-fatal; local state already updated
     }
   }
-
   /// Delete food log — locally and from server if logId present.
   Future<void> removeFoodLog(int index) async {
     final log = todayLogs[index];
@@ -381,6 +380,7 @@ class AppProvider extends ChangeNotifier {
         if (data.containsKey('evaluation_metrics')) {
           regressionMetrics = data['evaluation_metrics'] as Map<String, dynamic>;
         }
+        predictionRecommendation = data['recommendation'] as String?;
         notifyListeners();
         return (data['predicted_calories'] as num).toDouble();
       }

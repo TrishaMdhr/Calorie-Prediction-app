@@ -56,17 +56,17 @@ class _CaloriePredictionScreenState extends State<CaloriePredictionScreen> {
     final tomorrowKcal = dayComplete && wma > 0 ? wma.round() : null;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Calorie Prediction',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22)),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Today's Intake Card ──────────────────────────────
-            Container(
+        appBar: AppBar(
+          title: const Text('Calorie Prediction',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22)),
+        ),
+        body: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+              // ── Today's Intake Card ──────────────────────────────
+              Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -247,227 +247,260 @@ class _CaloriePredictionScreenState extends State<CaloriePredictionScreen> {
             const SizedBox(height: 16),
 
             if (provider.regressionMetrics != null) ...[
-              _buildMetricsCard(context, provider.regressionMetrics!, isDark),
-              const SizedBox(height: 16),
-            ],
+        _buildMetricsCard(context, provider.regressionMetrics!, isDark),
+    const SizedBox(height: 16),
+    ],
 
-            // ── Done eating / Start new day button ───────────────
-            if (!dayComplete)
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed:
-                  hasData ? () => _confirmFinishDay(context, provider) : null,
-                  icon: const Icon(Icons.check_circle_outline),
-                  label: const Text("I'm done eating for today"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primary,
-                    foregroundColor: Colors.white,
-                    disabledBackgroundColor: Colors.grey.shade300,
-                    disabledForegroundColor: Colors.grey.shade500,
-                    minimumSize: const Size(double.infinity, 48),
-                  ),
-                ),
-              )
-            else
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    provider.undoEndDay();
-                    _loadServerPrediction();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                            'Day unlocked — you can add more food now'),
-                        duration: Duration(seconds: 2),
+    // ── Prediction-based recommendation (eat more / less) ──
+    if (dayComplete && provider.predictionRecommendation != null) ...[
+    Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+    color: Colors.amber.withAlpha(30),
+    borderRadius: BorderRadius.circular(16),
+    border: Border.all(color: Colors.amber.withAlpha(90)),
+    ),
+    child: Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+    const Icon(Icons.tips_and_updates_outlined,
+    color: Colors.amber),
+    const SizedBox(width: 12),
+    Expanded(
+    child: Text(
+    provider.predictionRecommendation!,
+    style: TextStyle(
+    color: isDark
+    ? Colors.amber.shade200
+        : Colors.amber.shade900,
+    fontSize: 13,
+    fontWeight: FontWeight.w500),
+    ),
+    ),
+    ],
+    ),
+    ),
+      const SizedBox(height: 16),
+    ],
+
+                // ── Done eating / Undo button ───────────────
+                if (!dayComplete)
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed:
+                      hasData ? () => _confirmFinishDay(context, provider) : null,
+                      icon: const Icon(Icons.check_circle_outline),
+                      label: const Text("I'm done eating for today"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primary,
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor: Colors.grey.shade300,
+                        disabledForegroundColor: Colors.grey.shade500,
+                        minimumSize: const Size(double.infinity, 48),
                       ),
-                    );
-                  },
-                  icon: const Icon(Icons.undo),
-                  label: const Text('Undo — Add More Food'),
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 48),
+                    ),
+                  )
+                else
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        provider.undoEndDay();
+                        _loadServerPrediction();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                                'Day unlocked — you can add more food now'),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.undo),
+                      label: const Text('Undo — Add More Food'),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 48),
+                      ),
+                    ),
                   ),
-                ),
-              ),
-            const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-            // ── Weekly Trend Header ──────────────────────────────
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Weekly Trend',
-                    style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: textColor)),
-                if (hasData)
-                  Text(
-                    'Today: ${todayKcal.toInt()} kcal',
-                    style: TextStyle(color: AppTheme.primary, fontSize: 13),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // ── No Data State ────────────────────────────────────
-            if (!hasData)
-              Container(
-                height: 220,
-                decoration: BoxDecoration(
-                  color: cardColor,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: borderColor),
-                ),
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.bar_chart,
-                          size: 60,
-                          color: isDark ? Colors.grey.shade600 : Colors.grey),
-                      const SizedBox(height: 12),
-                      Text('No data yet',
-                          style: TextStyle(
-                              color: textColor,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16)),
-                      const SizedBox(height: 4),
+                // ── Weekly Trend Header ──────────────────────────────
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Weekly Trend',
+                        style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: textColor)),
+                    if (hasData)
                       Text(
-                        'Log food daily to see your\nweekly calorie trend',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: subTextColor, fontSize: 13),
+                        'Today: ${todayKcal.toInt()} kcal',
+                        style: TextStyle(color: AppTheme.primary, fontSize: 13),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // ── No Data State ────────────────────────────────────
+                if (!hasData)
+                  Container(
+                    height: 220,
+                    decoration: BoxDecoration(
+                      color: cardColor,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: borderColor),
+                    ),
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.bar_chart,
+                              size: 60,
+                              color: isDark ? Colors.grey.shade600 : Colors.grey),
+                          const SizedBox(height: 12),
+                          Text('No data yet',
+                              style: TextStyle(
+                                  color: textColor,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16)),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Log food daily to see your\nweekly calorie trend',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: subTextColor, fontSize: 13),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                // ── Bar Chart ────────────────────────────────────────
+                if (hasData)
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: cardColor,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: borderColor),
+                    ),
+                    child: SizedBox(
+                      height: 220,
+                      child: BarChart(
+                        BarChartData(
+                          borderData: FlBorderData(show: false),
+                          gridData: const FlGridData(show: false),
+                          titlesData: FlTitlesData(
+                            leftTitles: const AxisTitles(
+                                sideTitles: SideTitles(showTitles: false)),
+                            topTitles: const AxisTitles(
+                                sideTitles: SideTitles(showTitles: false)),
+                            rightTitles: const AxisTitles(
+                                sideTitles: SideTitles(showTitles: false)),
+                            bottomTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                getTitlesWidget: (v, _) {
+                                  const days = [
+                                    'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'
+                                  ];
+                                  return Padding(
+                                    padding: const EdgeInsets.only(top: 8),
+                                    child: Text(
+                                      days[v.toInt() % 7],
+                                      style: TextStyle(
+                                          fontSize: 11, color: subTextColor),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                          barGroups: [
+                            if (provider.dailyCalorieHistory.length >= 3)
+                              provider.dailyCalorieHistory[2]
+                            else
+                              0.0,
+                            if (provider.dailyCalorieHistory.length >= 3)
+                              provider.dailyCalorieHistory[2]
+                            else
+                              0.0,
+                            if (provider.dailyCalorieHistory.length >= 2)
+                              provider.dailyCalorieHistory[1]
+                            else
+                              0.0,
+                            if (provider.dailyCalorieHistory.length >= 2)
+                              provider.dailyCalorieHistory[1]
+                            else
+                              0.0,
+                            if (provider.dailyCalorieHistory.isNotEmpty)
+                              provider.dailyCalorieHistory[0]
+                            else
+                              0.0,
+                            if (provider.dailyCalorieHistory.isNotEmpty)
+                              provider.dailyCalorieHistory[0]
+                            else
+                              0.0,
+                            todayKcal,
+                          ].asMap().entries.map((e) {
+                            final isToday = e.key == 6;
+                            return BarChartGroupData(
+                              x: e.key,
+                              barRods: [
+                                BarChartRodData(
+                                  toY: e.value.toDouble(),
+                                  color: isToday
+                                      ? AppTheme.primary
+                                      : isDark
+                                      ? Colors.grey.shade600
+                                      : Colors.grey.shade300,
+                                  width: 28,
+                                  borderRadius: const BorderRadius.vertical(
+                                      top: Radius.circular(8)),
+                                ),
+                              ],
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                const SizedBox(height: 24),
+
+                // ── Info Box ─────────────────────────────────────────
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? Colors.blue.withAlpha(30)
+                        : Colors.blue.withAlpha(25),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.blue.withAlpha(60)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.info_outline, color: Colors.blue),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          dayComplete
+                              ? 'Two prediction methods shown above — WMA (client-side) and Linear Regression (server ML model). Log daily for greater accuracy!'
+                              : 'Once you\'re done eating for the day, tap the button above to see tomorrow\'s prediction from both models.',
+                          style: TextStyle(
+                              color:
+                              isDark ? Colors.blue.shade300 : Colors.blue),
+                        ),
                       ),
                     ],
                   ),
                 ),
-              ),
-
-            // ── Bar Chart ────────────────────────────────────────
-            if (hasData)
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: cardColor,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: borderColor),
-                ),
-                child: SizedBox(
-                  height: 220,
-                  child: BarChart(
-                    BarChartData(
-                      borderData: FlBorderData(show: false),
-                      gridData: const FlGridData(show: false),
-                      titlesData: FlTitlesData(
-                        leftTitles: const AxisTitles(
-                            sideTitles: SideTitles(showTitles: false)),
-                        topTitles: const AxisTitles(
-                            sideTitles: SideTitles(showTitles: false)),
-                        rightTitles: const AxisTitles(
-                            sideTitles: SideTitles(showTitles: false)),
-                        bottomTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            getTitlesWidget: (v, _) {
-                              const days = [
-                                'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'
-                              ];
-                              return Padding(
-                                padding: const EdgeInsets.only(top: 8),
-                                child: Text(
-                                  days[v.toInt() % 7],
-                                  style: TextStyle(
-                                      fontSize: 11, color: subTextColor),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                      barGroups: [
-                        if (provider.dailyCalorieHistory.length >= 3)
-                          provider.dailyCalorieHistory[2]
-                        else
-                          0.0,
-                        if (provider.dailyCalorieHistory.length >= 3)
-                          provider.dailyCalorieHistory[2]
-                        else
-                          0.0,
-                        if (provider.dailyCalorieHistory.length >= 2)
-                          provider.dailyCalorieHistory[1]
-                        else
-                          0.0,
-                        if (provider.dailyCalorieHistory.length >= 2)
-                          provider.dailyCalorieHistory[1]
-                        else
-                          0.0,
-                        if (provider.dailyCalorieHistory.isNotEmpty)
-                          provider.dailyCalorieHistory[0]
-                        else
-                          0.0,
-                        if (provider.dailyCalorieHistory.isNotEmpty)
-                          provider.dailyCalorieHistory[0]
-                        else
-                          0.0,
-                        todayKcal,
-                      ].asMap().entries.map((e) {
-                        final isToday = e.key == 6;
-                        return BarChartGroupData(
-                          x: e.key,
-                          barRods: [
-                            BarChartRodData(
-                              toY: e.value.toDouble(),
-                              color: isToday
-                                  ? AppTheme.primary
-                                  : isDark
-                                  ? Colors.grey.shade600
-                                  : Colors.grey.shade300,
-                              width: 28,
-                              borderRadius: const BorderRadius.vertical(
-                                  top: Radius.circular(8)),
-                            ),
-                          ],
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                ),
-              ),
-
-            const SizedBox(height: 24),
-
-            // ── Info Box ─────────────────────────────────────────
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: isDark
-                    ? Colors.blue.withAlpha(30)
-                    : Colors.blue.withAlpha(25),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.blue.withAlpha(60)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.info_outline, color: Colors.blue),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      dayComplete
-                          ? 'Two prediction methods shown above — WMA (client-side) and Linear Regression (server ML model). Log daily for greater accuracy!'
-                          : 'Once you\'re done eating for the day, tap the button above to see tomorrow\'s prediction from both models.',
-                      style: TextStyle(
-                          color:
-                          isDark ? Colors.blue.shade300 : Colors.blue),
-                    ),
-                  ),
-                ],
-              ),
+                const SizedBox(height: 40),
+              ],
             ),
-            const SizedBox(height: 40),
-          ],
         ),
-      ),
     );
   }
 
@@ -497,7 +530,6 @@ class _CaloriePredictionScreenState extends State<CaloriePredictionScreen> {
       ),
     );
   }
-
   Widget _buildMetricsCard(BuildContext context, Map<String, dynamic> metrics, bool isDark) {
     final cardColor = isDark ? const Color(0xFF2C2C2C) : AppTheme.surface;
     final textColor = isDark ? Colors.white : Colors.black;
