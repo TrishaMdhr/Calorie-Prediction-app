@@ -2,9 +2,56 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme.dart';
 import '../providers/app_provider.dart';
+import '../config/api_config.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  late TextEditingController _urlController;
+  String _connectionStatus = '';
+  bool _isTesting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _urlController = TextEditingController(text: ApiConfig.baseUrl);
+  }
+
+  @override
+  void dispose() {
+    _urlController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _saveAndTest() async {
+    final url = _urlController.text.trim();
+    if (url.isEmpty) return;
+    // Cache provider before any await to avoid BuildContext across async gap
+    final provider = Provider.of<AppProvider>(context, listen: false);
+    await ApiConfig.saveServerUrl(url);
+    setState(() {
+      _isTesting = true;
+      _connectionStatus = 'Testing connection...';
+    });
+    final ok = await provider.checkBackendConnection();
+    setState(() {
+      _isTesting = false;
+      _connectionStatus = ok
+          ? '✅ Connected to $url'
+          : '❌ Could not connect. Check IP and that the backend is running.';
+    });
+  }
+
+  Future<void> _resetUrl() async {
+    await ApiConfig.clearServerUrl();
+    _urlController.text = ApiConfig.baseUrl;
+    setState(() => _connectionStatus = 'Reset to default: ${ApiConfig.baseUrl}');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -19,6 +66,124 @@ class SettingsScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // ── SERVER CONNECTION ────────────────────────
+          _SectionTitle('SERVER CONNECTION'),
+          _SettingsCard(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.wifi,
+                            color: provider.isBackendReachable
+                                ? Colors.green
+                                : Colors.red,
+                            size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          provider.isBackendReachable
+                              ? 'Backend reachable'
+                              : 'Backend unreachable',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: provider.isBackendReachable
+                                ? Colors.green
+                                : Colors.red,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      'Server URL',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey),
+                    ),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: _urlController,
+                      keyboardType: TextInputType.url,
+                      decoration: InputDecoration(
+                        hintText: 'e.g. http://192.168.1.10:5000',
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 10),
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.clear, size: 18),
+                          onPressed: () => _urlController.clear(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    if (_connectionStatus.isNotEmpty)
+                      Text(
+                        _connectionStatus,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: _connectionStatus.startsWith('✅')
+                              ? Colors.green
+                              : _connectionStatus.startsWith('❌')
+                                  ? Colors.red
+                                  : Colors.orange,
+                        ),
+                      ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: _isTesting ? null : _saveAndTest,
+                            icon: _isTesting
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white))
+                                : const Icon(Icons.check_circle_outline,
+                                    size: 18),
+                            label: Text(
+                                _isTesting ? 'Testing...' : 'Save & Test'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.primary,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10)),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        OutlinedButton(
+                          onPressed: _resetUrl,
+                          style: OutlinedButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10)),
+                          ),
+                          child: const Text('Reset'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'On physical Android/iOS: enter your PC\'s LAN IP\n'
+                      'e.g. http://192.168.1.10:5000\n'
+                      'Run `ipconfig` on Windows to find your IP.',
+                      style: TextStyle(fontSize: 11, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+
           // ── NOTIFICATIONS ───────────────────────────
           _SectionTitle('NOTIFICATIONS'),
           _SettingsCard(

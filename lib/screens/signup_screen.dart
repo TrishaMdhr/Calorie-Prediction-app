@@ -14,6 +14,7 @@ import 'package:provider/provider.dart';
 import '../theme.dart';
 import '../providers/app_provider.dart';
 import 'login_screen.dart';
+import 'forgot_password_screen.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -121,9 +122,6 @@ class _SignupScreenState extends State<SignupScreen> {
 
       Future.delayed(const Duration(seconds: 2), () {
         if (mounted) {
-          // Sign the freshly-created session back out so the user has
-          // to actually log in, matching the expected signup → login flow.
-          provider.logout();
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -267,7 +265,11 @@ class _SignupScreenState extends State<SignupScreen> {
                 const Text('Remember me'),
                 const Spacer(),
                 TextButton(
-                  onPressed: () {},
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const ForgotPasswordScreen()),
+                  ),
                   child: Text('Forgot password?',
                       style: TextStyle(
                           color: AppTheme.primary,

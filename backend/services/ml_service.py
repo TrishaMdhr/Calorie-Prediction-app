@@ -54,13 +54,15 @@ def predict_from_image(file_storage):
 
     food_name, confidence = result
     details = get_food_details(food_name)
-    calories = details.get("calories", 200)
     clean_name = food_name.replace("_", " ").title()
 
     return {
         "food": clean_name,
         "raw_food": food_name,
-        "calories": calories,
+        "calories": details.get("calories", 250),
+        "protein":  details.get("protein", 0),
+        "carbs":    details.get("carbs", 0),
+        "fat":      details.get("fat", 0),
         "confidence": confidence,
     }
 

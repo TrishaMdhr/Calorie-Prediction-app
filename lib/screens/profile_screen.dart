@@ -157,6 +157,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   if (_nameError != null || _emailError != null) return;
 
                   provider.updateNameEmail(name, email);
+                  provider.syncProfileToServer(name: name);
                   setState(() => _editing = false);
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(

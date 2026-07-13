@@ -17,7 +17,7 @@ from flask import Blueprint, jsonify, request
 
 from api.auth import get_current_user_id, token_required
 from api.helpers import recommendations_for_calories
-from services import food_service, ml_service
+from services import food_service, ml_service, user_service
 
 predict_bp = Blueprint("predict", __name__)
 
@@ -26,21 +26,34 @@ predict_bp = Blueprint("predict", __name__)
 def predict_food_image():
     if not ml_service.is_ml_available():
         return jsonify({
-            "error": "ML model not available",
-            "hint": "Place food_model.keras in backend/ml/artifacts/ or train with ml/training/train_cnn.py.",
+            "error": "CNN model not loaded",
+            "hint": "Place food_model.keras or food_model.h5 in backend/ml/artifacts/. "
+                    "Server is still starting up — please retry in 30 seconds.",
+            "model_available": False,
         }), 503
 
     if "image" not in request.files:
-        return jsonify({"error": "No image provided"}), 400
+        return jsonify({"error": "No image provided. Send the image as multipart/form-data with field name 'image'"}), 400
 
     file = request.files["image"]
     if not file.filename:
-        return jsonify({"error": "Empty image upload"}), 400
+        return jsonify({"error": "Empty image upload — filename is missing"}), 400
 
     try:
         prediction = ml_service.predict_from_image(file)
     except ValueError as exc:
-        return jsonify({"error": str(exc)}), 400
+        return jsonify({"error": f"Could not process image: {exc}"}), 400
+    except Exception as exc:
+        return jsonify({"error": f"Prediction failed: {exc}"}), 500
+
+    # Confidence tier: high ≥ 70%, medium 50–70%, low 30–50%
+    conf = prediction["confidence"]
+    if conf >= 70:
+        confidence_tier = "high"
+    elif conf >= 50:
+        confidence_tier = "medium"
+    else:
+        confidence_tier = "low"
 
     food = food_service.get_or_create_from_prediction(
         prediction["food"],
@@ -48,11 +61,15 @@ def predict_food_image():
     )
 
     response = {
-        "food_id": food["food_id"],
-        "food": prediction["food"],
-        "raw_food": prediction["raw_food"],
-        "calories": prediction["calories"],
-        "confidence": prediction["confidence"],
+        "food_id":         food["food_id"],
+        "food":            prediction["food"],
+        "raw_food":        prediction["raw_food"],
+        "calories":        prediction["calories"],
+        "protein":         prediction.get("protein", 0),
+        "carbs":           prediction.get("carbs", 0),
+        "fat":             prediction.get("fat", 0),
+        "confidence":      conf,
+        "confidence_tier": confidence_tier,
     }
     formatted, _ = recommendations_for_calories(prediction["calories"])
     response.update(formatted)
@@ -76,13 +93,17 @@ def predict_future_calories():
     try:
         calories = ml_service.predict_future_calories(user_id, day)
         metrics = ml_service.get_regression_metrics(user_id)
+        goal = user_service.get_daily_goal(user_id)
+        gender = user_service.get_user_gender(user_id)
     except FileNotFoundError:
         return jsonify({"error": "Regression dataset not found in backend/ml/data/"}), 503
     except Exception as exc:
         return jsonify({"error": f"Prediction failed: {exc}"}), 500
 
     response = {"day": day, "predicted_calories": calories, "evaluation_metrics": metrics}
-    formatted, _ = recommendations_for_calories(calories, is_daily=True)
+    formatted, _ = recommendations_for_calories(
+        calories, is_daily=True, daily_goal=goal, gender=gender
+    )
     response.update(formatted)
     return jsonify(response), 200
 

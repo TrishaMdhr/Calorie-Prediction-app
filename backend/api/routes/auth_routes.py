@@ -65,6 +65,53 @@ def login():
     }), 200
 
 
+@auth_bp.route("/user/profile", methods=["GET", "PUT"])
+@token_required
+def user_profile():
+    user_id = get_current_user_id()
+
+    if request.method == "GET":
+        user = user_service.get_user_by_id(user_id)
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+        return jsonify({
+            "user_id": user["user_id"],
+            "name": user["name"],
+            "email": user["email"],
+            "daily_calorie_goal": user["daily_calorie_goal"],
+            "gender": user.get("gender", ""),
+            "age": user.get("age", 0),
+            "weight": user.get("weight", 0.0),
+            "height_feet": user.get("height_feet", 0),
+            "height_inch": user.get("height_inch", 0),
+            "activity_level": user.get("activity_level", ""),
+            "fitness_goal": user.get("fitness_goal", ""),
+        }), 200
+
+    data = request.get_json() or {}
+    user = user_service.update_profile(
+        user_id,
+        name=data.get("name"),
+        gender=data.get("gender"),
+        age=data.get("age"),
+        weight=data.get("weight"),
+        height_feet=data.get("height_feet"),
+        height_inch=data.get("height_inch"),
+        activity_level=data.get("activity_level"),
+        fitness_goal=data.get("fitness_goal"),
+    )
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    return jsonify({
+        "message": "Profile updated successfully",
+        "user_id": user["user_id"],
+        "name": user["name"],
+        "email": user["email"],
+        "daily_calorie_goal": user["daily_calorie_goal"],
+    }), 200
+
+
 @auth_bp.route("/user/goal", methods=["PUT"])
 @token_required
 def update_goal():
@@ -82,4 +129,21 @@ def update_goal():
         "message": "Daily calorie goal updated successfully",
         "daily_calorie_goal": goal
     }), 200
+
+
+@auth_bp.route("/forgot-password", methods=["POST"])
+def forgot_password():
+    data = request.get_json() or {}
+    email = data.get("email")
+    new_password = data.get("password")
+
+    if not email or not new_password:
+        return jsonify({"error": "email and password are required"}), 400
+
+    user, error = user_service.reset_password(email, new_password)
+    if error:
+        return jsonify({"error": error}), 404
+
+    return jsonify({"message": "Password updated successfully"}), 200
+
 

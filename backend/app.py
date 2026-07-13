@@ -11,8 +11,16 @@
 #   .\venv\Scripts\python.exe app.py
 # =============================================================================
 from api.app_factory import create_app
+from database import engine
+from models import Base
 
 
+def init_database():
+    """Create tables if they do not exist (MySQL or SQLite fallback)."""
+    Base.metadata.create_all(bind=engine)
+
+
+init_database()
 app = create_app()
 
 if __name__ == "__main__":

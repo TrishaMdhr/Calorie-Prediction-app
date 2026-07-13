@@ -19,21 +19,15 @@
 //
 // All panels respect the Meal Type selector (Breakfast/Lunch/Dinner/Snacks)
 // =============================================================================
-import 'dart:convert';
-
-import 'dart:typed_data';
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:http/http.dart' as http;
 import '../theme.dart';
 import '../providers/app_provider.dart';
 import '../models/food_log_model.dart';
 import '../services/food_dataset_service.dart';
-
-// Flask CNN server URL for food image classification
-const _kFlaskUrl = 'http://10.0.2.2:5000/predict';
 
 class LogFoodScreen extends StatefulWidget {
   const LogFoodScreen({super.key});
@@ -194,10 +188,35 @@ class _ScanPanelState extends State<_ScanPanel> {
   bool _isFromDataset = false;
   final _datasetService = FoodDatasetService();
 
+  // Editable controllers — populated after scan, let user correct before saving
+  final _nameCtrl = TextEditingController();
+  final _calCtrl  = TextEditingController();
+  final _proCtrl  = TextEditingController();
+  final _carbCtrl = TextEditingController();
+  final _fatCtrl  = TextEditingController();
+
   @override
   void initState() {
     super.initState();
     _datasetService.load();
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _calCtrl.dispose();
+    _proCtrl.dispose();
+    _carbCtrl.dispose();
+    _fatCtrl.dispose();
+    super.dispose();
+  }
+
+  void _populateEditors(Map<String, dynamic> result) {
+    _nameCtrl.text = result['name'] ?? '';
+    _calCtrl.text  = '${result['calories'] ?? 0}';
+    _proCtrl.text  = '${result['protein'] ?? 0}';
+    _carbCtrl.text = '${result['carbs'] ?? 0}';
+    _fatCtrl.text  = '${result['fat'] ?? 0}';
   }
 
   Future<void> _pickAndScan(ImageSource source) async {
@@ -216,80 +235,69 @@ class _ScanPanelState extends State<_ScanPanel> {
       _isFromDataset = false;
     });
 
-    try {
-      // Call the CNN Flask server for image recognition
-      final request = http.MultipartRequest(
-        'POST',
-        Uri.parse(_kFlaskUrl),
-      );
-      request.files.add(
-        http.MultipartFile.fromBytes(
-          'image',
-          bytes,
-          filename: 'food.jpg',
-        ),
-      );
+    // Cache provider before await
+    final provider = Provider.of<AppProvider>(context, listen: false);
+    final data = await provider.predictFoodFromImage(bytes);
 
-      final streamedResponse = await request
-          .send()
-          .timeout(const Duration(seconds: 30));
-      final response =
-      await http.Response.fromStream(streamedResponse);
+    if (!mounted) return;
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+    if (data != null && !data.containsKey('error')) {
+      final foodName  = data['food'] as String;
+      final calories  = (data['calories'] as num).toInt();
+      final confidence = (data['confidence'] as num).toDouble();
+      final protein   = (data['protein'] as num?)?.toDouble() ?? 0;
+      final carbs     = (data['carbs'] as num?)?.toDouble() ?? 0;
+      final fat       = (data['fat'] as num?)?.toDouble() ?? 0;
 
-        if (data.containsKey('error')) {
-          setState(() {
-            _errorMsg =
-            'Could not recognize this food. Please add it manually.';
-            _scanning = false;
-          });
-        } else {
-          final foodName = data['food'] as String;
-          final calories = (data['calories'] as num).toInt();
-          final confidence = (data['confidence'] as num).toDouble();
+      // Enrich macros from local dataset if available
+      final match = _datasetService.findMatch(foodName);
 
-          // Query local dataset for macronutrients info
-          final match = _datasetService.findMatch(foodName);
-
-          setState(() {
-            _result = {
-              'name': foodName,
-              'calories': calories,
-              'protein': match?.protein.round() ?? 0,
-              'carbs': match?.carbs.round() ?? 0,
-              'fat': match?.fat.round() ?? 0,
-              'confidence': confidence,
-            };
-            _isFromDataset = match != null;
-            _scanning = false;
-          });
-        }
-      } else {
-        setState(() {
-          _errorMsg = 'Something went wrong. Please add manually.';
-          _scanning = false;
-        });
-      }
-    } catch (e) {
+      final result = {
+        'name':            foodName,
+        'calories':        calories,
+        'protein':         match?.protein.round() ?? protein.round(),
+        'carbs':           match?.carbs.round() ?? carbs.round(),
+        'fat':             match?.fat.round() ?? fat.round(),
+        'confidence':      confidence,
+        'confidence_tier': data['confidence_tier'] ?? 'low',
+      };
       setState(() {
-        _errorMsg =
-        'Could not connect to server. Please add manually.';
+        _result = result;
+        _isFromDataset = match != null;
+        _scanning = false;
+      });
+      _populateEditors(result);
+    } else {
+      setState(() {
+        _errorMsg = data?['error'] ?? 'Could not recognize this food. Please add it manually.';
         _scanning = false;
       });
     }
   }
 
   void _saveToLog() {
-    if (_result == null) return;
+    final name = _nameCtrl.text.trim();
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a food name'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+    final cal = double.tryParse(_calCtrl.text) ?? 0;
+    if (cal <= 0 || cal > 9999) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Calories must be between 1 and 9999'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
     final provider = Provider.of<AppProvider>(context, listen: false);
     provider.addFoodLog(FoodLog(
-      name: _result!['name'] ?? 'Scanned Food',
-      calories: (_result!['calories'] as num).toDouble(),
-      protein: (_result!['protein'] as num).toDouble(),
-      carbs: (_result!['carbs'] as num).toDouble(),
-      fat: (_result!['fat'] as num).toDouble(),
+      name:     name,
+      calories: cal,
+      protein:  double.tryParse(_proCtrl.text) ?? 0,
+      carbs:    double.tryParse(_carbCtrl.text) ?? 0,
+      fat:      double.tryParse(_fatCtrl.text) ?? 0,
       mealType: widget.mealType,
     ));
     ScaffoldMessenger.of(context).showSnackBar(
@@ -315,6 +323,32 @@ class _ScanPanelState extends State<_ScanPanel> {
     );
   }
 
+  Widget _confidenceBanner(double confidence, String tier) {
+    Color bgColor; IconData icon; String label;
+    if (tier == 'high') {
+      bgColor = Colors.green.shade50; icon = Icons.check_circle_outline; label = 'High confidence (${confidence.toStringAsFixed(1)}%) — result looks reliable';
+    } else if (tier == 'medium') {
+      bgColor = Colors.orange.shade50; icon = Icons.info_outline; label = 'Medium confidence (${confidence.toStringAsFixed(1)}%) — please verify the result';
+    } else {
+      bgColor = Colors.red.shade50; icon = Icons.warning_amber_rounded; label = 'Low confidence (${confidence.toStringAsFixed(1)}%) — result may be wrong, please correct below';
+    }
+    final textColor = tier == 'high' ? Colors.green.shade800 : tier == 'medium' ? Colors.orange.shade800 : Colors.red.shade800;
+    final borderColor = tier == 'high' ? Colors.green.shade200 : tier == 'medium' ? Colors.orange.shade200 : Colors.red.shade200;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: borderColor),
+      ),
+      child: Row(children: [
+        Icon(icon, color: textColor, size: 18),
+        const SizedBox(width: 8),
+        Expanded(child: Text(label, style: TextStyle(color: textColor, fontSize: 12))),
+      ]),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_scanning) {
@@ -324,119 +358,130 @@ class _ScanPanelState extends State<_ScanPanel> {
           children: [
             CircularProgressIndicator(color: AppTheme.primary),
             SizedBox(height: 20),
-            Text('Analyzing your food...',
+            Text('Analyzing your food…',
                 style: TextStyle(color: Colors.grey)),
+            SizedBox(height: 8),
+            Text('This may take up to 60 s on first scan\n(model is loading)',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey, fontSize: 12)),
           ],
         ),
       );
     }
 
     if (_result != null) {
+      final conf = (_result!['confidence'] as num).toDouble();
+      final tier = _result!['confidence_tier'] as String? ?? 'low';
       return SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(20),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Preview image
             if (_imageBytes != null)
               ClipRRect(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(14),
                 child: Image.memory(_imageBytes!,
-                    height: 180,
-                    width: double.infinity,
-                    fit: BoxFit.cover),
+                    height: 170, width: double.infinity, fit: BoxFit.cover),
               ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
+
+            // Confidence banner
+            _confidenceBanner(conf, tier),
+            const SizedBox(height: 14),
+
+            // Source badge
             Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: AppTheme.primary.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                    color: AppTheme.primary.withOpacity(0.3)),
+                color: _isFromDataset ? Colors.blue.withValues(alpha: 0.12) : Colors.grey.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(20),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(children: [
-                    const Icon(Icons.check_circle,
-                        color: AppTheme.primary),
-                    const SizedBox(width: 8),
-                    const Text('Food Identified!',
-                        style: TextStyle(
-                            color: AppTheme.primary,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16)),
-                  ]),
-                  const SizedBox(height: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: _isFromDataset
-                          ? Colors.blue.withOpacity(0.12)
-                          : Colors.grey.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      _isFromDataset
-                          ? 'Matched from our food database'
-                          : 'CNN model prediction',
-                      style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: _isFromDataset
-                              ? Colors.blue
-                              : Colors.grey.shade700),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    _result!['name'] ?? '',
-                    style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Confidence: ${(_result!['confidence'] as double).toStringAsFixed(1)}%',
-                    style: const TextStyle(
-                        color: Colors.grey, fontSize: 12),
-                  ),
-                  const SizedBox(height: 16),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      _MacroChip(
-                          '${_result!['calories']} kcal',
-                          Colors.green),
-                      _MacroChip(
-                          'P: ${_result!['protein']}g',
-                          Colors.blue),
-                      _MacroChip(
-                          'C: ${_result!['carbs']}g',
-                          Colors.orange),
-                      _MacroChip(
-                          'F: ${_result!['fat']}g', Colors.red),
-                    ],
-                  ),
-                ],
+              child: Text(
+                _isFromDataset ? 'Macros from food database' : 'Macros estimated by CNN',
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
+                    color: _isFromDataset ? Colors.blue : Colors.grey.shade700),
               ),
             ),
+            const SizedBox(height: 14),
+
+            // ── Editable result fields ─────────────────
+            const Text('FOOD DETAILS — tap any field to correct',
+                style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold, letterSpacing: 0.8)),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _nameCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Food Name',
+                prefixIcon: Icon(Icons.restaurant_outlined),
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Row(children: [
+              Expanded(child: TextField(
+                controller: _calCtrl,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Calories (kcal)',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+              )),
+              const SizedBox(width: 10),
+              Expanded(child: TextField(
+                controller: _proCtrl,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Protein (g)',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+              )),
+            ]),
+            const SizedBox(height: 10),
+            Row(children: [
+              Expanded(child: TextField(
+                controller: _carbCtrl,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Carbs (g)',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+              )),
+              const SizedBox(width: 10),
+              Expanded(child: TextField(
+                controller: _fatCtrl,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Fat (g)',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+              )),
+            ]),
             const SizedBox(height: 20),
-            ElevatedButton.icon(
-              onPressed: _saveToLog,
-              icon: const Icon(Icons.check),
-              label: const Text('Save To Log'),
+
+            // Action buttons
+            SizedBox(width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _saveToLog,
+                icon: const Icon(Icons.check),
+                label: const Text('Save To Log'),
+              ),
             ),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: () => setState(() {
-                _result = null;
-                _imageBytes = null;
-              }),
-              icon: const Icon(Icons.refresh),
-              label: const Text('Scan Again'),
+            const SizedBox(height: 10),
+            SizedBox(width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => setState(() {
+                  _result = null;
+                  _imageBytes = null;
+                }),
+                icon: const Icon(Icons.refresh),
+                label: const Text('Scan Again'),
+              ),
             ),
           ],
         ),
@@ -461,10 +506,10 @@ class _ScanPanelState extends State<_ScanPanel> {
     Container(
     padding: const EdgeInsets.all(14),
     decoration: BoxDecoration(
-    color: Colors.orange.withOpacity(0.1),
+    color: Colors.orange.withValues(alpha: 0.1),
     borderRadius: BorderRadius.circular(12),
     border: Border.all(
-    color: Colors.orange.withOpacity(0.4)),
+    color: Colors.orange.withValues(alpha: 0.4)),
     ),
     child: Row(children: [
     const Icon(Icons.warning_amber_rounded,
@@ -536,29 +581,6 @@ class _ScanPanelState extends State<_ScanPanel> {
   }
 }
 
-class _MacroChip extends StatelessWidget {
-  final String label;
-  final Color color;
-  const _MacroChip(this.label, this.color);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding:
-      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(label,
-          style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.w600,
-              fontSize: 12)),
-    );
-  }
-}
-
 // ── Manual Panel ─────────────────────────────────────────
 class _ManualPanel extends StatefulWidget {
   final String mealType;
@@ -568,41 +590,100 @@ class _ManualPanel extends StatefulWidget {
 }
 
 class _ManualPanelState extends State<_ManualPanel> {
-  final List<_FoodItem> _items = [_FoodItem()];
+  final _formKey = GlobalKey<FormState>();
+  final List<_FoodItem> _items = [];
 
-  /// True if any of calories/protein/carbs/fat was entered as negative.
-  /// Empty fields are fine (they default to 0 later) — only actual
-  /// negative numbers are rejected.
-  bool _hasNegativeValue(_FoodItem item) {
-    final cal = double.tryParse(item.calCtrl.text);
-    final protein = double.tryParse(item.proteinCtrl.text);
-    final carbs = double.tryParse(item.carbsCtrl.text);
-    final fat = double.tryParse(item.fatCtrl.text);
-    return (cal != null && cal < 0) ||
-        (protein != null && protein < 0) ||
-        (carbs != null && carbs < 0) ||
-        (fat != null && fat < 0);
+  @override
+  void initState() {
+    super.initState();
+    _items.add(_createItem());
+  }
+
+  _FoodItem _createItem() {
+    final item = _FoodItem();
+    item.calCtrl.addListener(_onFieldChanged);
+    item.proteinCtrl.addListener(_onFieldChanged);
+    item.carbsCtrl.addListener(_onFieldChanged);
+    item.fatCtrl.addListener(_onFieldChanged);
+    return item;
+  }
+
+  void _onFieldChanged() {
+    setState(() {});
+  }
+
+  @override
+  void dispose() {
+    for (final item in _items) {
+      item.calCtrl.removeListener(_onFieldChanged);
+      item.proteinCtrl.removeListener(_onFieldChanged);
+      item.carbsCtrl.removeListener(_onFieldChanged);
+      item.fatCtrl.removeListener(_onFieldChanged);
+      item.dispose();
+    }
+    super.dispose();
+  }
+
+  void _removeItem(int index) {
+    if (_items.length > 1) {
+      final item = _items.removeAt(index);
+      item.calCtrl.removeListener(_onFieldChanged);
+      item.proteinCtrl.removeListener(_onFieldChanged);
+      item.carbsCtrl.removeListener(_onFieldChanged);
+      item.fatCtrl.removeListener(_onFieldChanged);
+      item.dispose();
+      setState(() {});
+    }
+  }
+
+  void _addItem() {
+    setState(() {
+      _items.add(_createItem());
+    });
+  }
+
+  String? _getMacroWarning(_FoodItem item) {
+    final calStr = item.calCtrl.text.trim();
+    final proStr = item.proteinCtrl.text.trim();
+    final carbStr = item.carbsCtrl.text.trim();
+    final fatStr = item.fatCtrl.text.trim();
+
+    if (calStr.isEmpty) return null;
+
+    final cal = double.tryParse(calStr) ?? 0;
+    if (cal <= 0) return null;
+
+    // If all macros are empty, do not warn (optional fields)
+    if (proStr.isEmpty && carbStr.isEmpty && fatStr.isEmpty) return null;
+
+    final p = double.tryParse(proStr) ?? 0;
+    final c = double.tryParse(carbStr) ?? 0;
+    final f = double.tryParse(fatStr) ?? 0;
+
+    final estCal = (p * 4) + (c * 4) + (f * 9);
+    final difference = (estCal - cal).abs();
+    final percentDiff = cal == 0 ? 0.0 : (difference / cal);
+
+    if (percentDiff > 0.3 && difference > 50) {
+      return '⚠️ Macros sum to ${estCal.round()} kcal, which deviates from entered calories by ${(percentDiff * 100).round()}%';
+    }
+    return null;
   }
 
   void _saveToLog() {
-    final provider =
-    Provider.of<AppProvider>(context, listen: false);
-
-    // Reject negative calories/protein/carbs/fat before saving anything
-    for (final item in _items) {
-      if (_hasNegativeValue(item)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-                'Calories, protein, carbs and fat cannot be negative'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
+    if (!_formKey.currentState!.validate()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please correct the validation errors in the form'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
     }
 
+    final provider = Provider.of<AppProvider>(context, listen: false);
     bool anyAdded = false;
+
     for (final item in _items) {
       final name = item.nameCtrl.text.trim();
       final cal = double.tryParse(item.calCtrl.text) ?? 0;
@@ -610,8 +691,7 @@ class _ManualPanelState extends State<_ManualPanel> {
         provider.addFoodLog(FoodLog(
           name: name,
           calories: cal,
-          protein:
-          double.tryParse(item.proteinCtrl.text) ?? 0,
+          protein: double.tryParse(item.proteinCtrl.text) ?? 0,
           carbs: double.tryParse(item.carbsCtrl.text) ?? 0,
           fat: double.tryParse(item.fatCtrl.text) ?? 0,
           mealType: widget.mealType,
@@ -619,6 +699,7 @@ class _ManualPanelState extends State<_ManualPanel> {
         anyAdded = true;
       }
     }
+
     if (anyAdded) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -630,83 +711,75 @@ class _ManualPanelState extends State<_ManualPanel> {
       Future.delayed(const Duration(seconds: 2), () {
         if (context.mounted) Navigator.pop(context);
       });
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content:
-            Text('Please enter food name and calories')),
-      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.only(
+        top: 16,
+        left: 16,
+        right: 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+      ),
+      child: Form(
+        key: _formKey,
         child: Column(
-            children: [
-            ..._items.asMap().entries.map((entry) =>
-            _FoodItemForm(
-              item: entry.value,
-              index: entry.key,
-              canRemove: _items.length > 1,
-              onRemove: () => setState(
-                      () => _items.removeAt(entry.key)),
-              onSaveToMacros: () {
-                final name =
-                entry.value.nameCtrl.text.trim();
-                final cal = double.tryParse(
-                    entry.value.calCtrl.text) ??
-                    0;
-                if (_hasNegativeValue(entry.value)) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                          'Calories, protein, carbs and fat cannot be negative'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                  return;
-                }
-                if (name.isNotEmpty) {
-                  Provider.of<AppProvider>(context,
-                      listen: false)
-                      .saveToMacros(FoodLog(
-                    name: name,
-                    calories: cal,
-                    protein: double.tryParse(
-                        entry.value.proteinCtrl.text) ??
-                        0,
-                    carbs: double.tryParse(
-                        entry.value.carbsCtrl.text) ??
-                        0,
-                    fat: double.tryParse(
-                        entry.value.fatCtrl.text) ??
-                        0,
-                    mealType: widget.mealType,
-                  ));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
+          children: [
+            ..._items.asMap().entries.map((entry) {
+              final index = entry.key;
+              final item = entry.value;
+              final warning = _getMacroWarning(item);
+
+              return _FoodItemForm(
+                item: item,
+                index: index,
+                canRemove: _items.length > 1,
+                onRemove: () => _removeItem(index),
+                macroWarning: warning,
+                onSaveToMacros: () {
+                  if (!_formKey.currentState!.validate()) return;
+                  final name = item.nameCtrl.text.trim();
+                  final cal = double.tryParse(item.calCtrl.text) ?? 0;
+                  if (name.isNotEmpty) {
+                    Provider.of<AppProvider>(context, listen: false)
+                        .saveToMacros(FoodLog(
+                      name: name,
+                      calories: cal,
+                      protein: double.tryParse(item.proteinCtrl.text) ?? 0,
+                      carbs: double.tryParse(item.carbsCtrl.text) ?? 0,
+                      fat: double.tryParse(item.fatCtrl.text) ?? 0,
+                      mealType: widget.mealType,
+                    ));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
                         content: Text('Saved to macros!'),
-                        backgroundColor: Colors.green),
-                  );
-                }
-              },
-            )),
-        const SizedBox(height: 8),
-        TextButton.icon(
-          onPressed: () =>
-              setState(() => _items.add(_FoodItem())),
-          label: const Text('Add Another Item'),
-        ),
-              const SizedBox(height: 16),
-              ElevatedButton(
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  }
+                },
+              );
+            }),
+            const SizedBox(height: 8),
+            TextButton.icon(
+              onPressed: _addItem,
+              icon: const Icon(Icons.add),
+              label: const Text('Add Another Item'),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
                 onPressed: _saveToLog,
                 child: const Text('Save To Log'),
               ),
-              const SizedBox(height: 24),
-            ],
+            ),
+            const SizedBox(height: 24),
+          ],
         ),
+      ),
     );
   }
 }
@@ -717,6 +790,14 @@ class _FoodItem {
   final proteinCtrl = TextEditingController();
   final carbsCtrl = TextEditingController();
   final fatCtrl = TextEditingController();
+
+  void dispose() {
+    nameCtrl.dispose();
+    calCtrl.dispose();
+    proteinCtrl.dispose();
+    carbsCtrl.dispose();
+    fatCtrl.dispose();
+  }
 }
 
 class _FoodItemForm extends StatelessWidget {
@@ -725,6 +806,7 @@ class _FoodItemForm extends StatelessWidget {
   final bool canRemove;
   final VoidCallback onRemove;
   final VoidCallback onSaveToMacros;
+  final String? macroWarning;
 
   const _FoodItemForm({
     required this.item,
@@ -732,10 +814,13 @@ class _FoodItemForm extends StatelessWidget {
     required this.canRemove,
     required this.onRemove,
     required this.onSaveToMacros,
+    this.macroWarning,
   });
 
   @override
   Widget build(BuildContext context) {
+    final numFormatter = FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'));
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -745,77 +830,149 @@ class _FoodItemForm extends StatelessWidget {
         border: Border.all(color: Colors.grey.shade200),
         boxShadow: [
           BoxShadow(
-              color: Colors.grey.shade100,
-              blurRadius: 4,
-              offset: const Offset(0, 2))
+            color: Colors.grey.shade100,
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          )
         ],
       ),
-      child: Column(children: [
-        Row(children: [
-          Expanded(
-            child: TextField(
-              controller: item.nameCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Food Item',
-                isDense: true,
-                hintText: 'e.g. Rice, Chicken',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: item.nameCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Food Item',
+                    isDense: true,
+                    hintText: 'e.g. Rice, Chicken',
+                  ),
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return 'Name required';
+                    if (v.trim().length < 2) return 'At least 2 characters';
+                    return null;
+                  },
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.bookmark_border, color: AppTheme.primary),
+                tooltip: 'Save to macros',
+                onPressed: onSaveToMacros,
+              ),
+              if (canRemove)
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                  onPressed: onRemove,
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: item.calCtrl,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [numFormatter],
+                  decoration: const InputDecoration(
+                    labelText: 'Calories',
+                    isDense: true,
+                  ),
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return 'Calories required';
+                    final n = double.tryParse(v);
+                    if (n == null) return 'Invalid number';
+                    if (n <= 0) return 'Must be > 0';
+                    if (n > 9999) return 'Max 9999 kcal';
+                    return null;
+                  },
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: TextFormField(
+                  controller: item.proteinCtrl,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [numFormatter],
+                  decoration: const InputDecoration(
+                    labelText: 'Protein (g)',
+                    isDense: true,
+                  ),
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return null;
+                    final n = double.tryParse(v);
+                    if (n == null) return 'Invalid';
+                    if (n < 0) return 'Must be >= 0';
+                    if (n > 999) return 'Max 999g';
+                    return null;
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: item.carbsCtrl,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [numFormatter],
+                  decoration: const InputDecoration(
+                    labelText: 'Carbs (g)',
+                    isDense: true,
+                  ),
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return null;
+                    final n = double.tryParse(v);
+                    if (n == null) return 'Invalid';
+                    if (n < 0) return 'Must be >= 0';
+                    if (n > 999) return 'Max 999g';
+                    return null;
+                  },
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: TextFormField(
+                  controller: item.fatCtrl,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [numFormatter],
+                  decoration: const InputDecoration(
+                    labelText: 'Fat (g)',
+                    isDense: true,
+                  ),
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return null;
+                    final n = double.tryParse(v);
+                    if (n == null) return 'Invalid';
+                    if (n < 0) return 'Must be >= 0';
+                    if (n > 999) return 'Max 999g';
+                    return null;
+                  },
+                ),
+              ),
+            ],
+          ),
+          if (macroWarning != null) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange.shade200),
+              ),
+              child: Text(
+                macroWarning!,
+                style: TextStyle(color: Colors.orange.shade800, fontSize: 11),
               ),
             ),
-          ),
-          IconButton(
-            icon: Icon(Icons.bookmark_border,
-                color: AppTheme.primary),
-            tooltip: 'Save to macros',
-            onPressed: onSaveToMacros,
-          ),
-          if (canRemove)
-            IconButton(
-              icon: const Icon(Icons.delete_outline,
-                  color: Colors.red),
-              onPressed: onRemove,
-            ),
-        ]),
-        const SizedBox(height: 10),
-        Row(children: [
-          Expanded(
-            child: TextField(
-              controller: item.calCtrl,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                  labelText: 'Calories', isDense: true),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: TextField(
-              controller: item.proteinCtrl,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                  labelText: 'Protein (g)', isDense: true),
-            ),
-          ),
-        ]),
-        const SizedBox(height: 10),
-        Row(children: [
-          Expanded(
-            child: TextField(
-              controller: item.carbsCtrl,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                  labelText: 'Carbs (g)', isDense: true),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: TextField(
-              controller: item.fatCtrl,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                  labelText: 'Fat (g)', isDense: true),
-            ),
-          ),
-        ]),
-      ]),
+          ],
+        ],
+      ),
     );
   }
 }

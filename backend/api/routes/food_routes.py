@@ -1,18 +1,15 @@
 # =============================================================================
 # FILE: backend/api/routes/food_routes.py
-# ROLE: Food database and CNN image prediction endpoints
+# ROLE: Food database endpoints
 # -----------------------------------------------------------------------------
-# POST /predict           — CNN image recognition (multipart 'image' field)
-#                           Returns: food name, calories, confidence, food_id
-#                           Requires: food_model.keras in backend/ml/artifacts/
-# POST /manual            — Register a custom food item
+# POST /manual            — Register a custom food item (requires auth)
 #                           Body: food_name, calories, protein, carbs, fat
 #                           Returns: food_id for use with POST /log
-# GET  /foods             — List all food items in the database
 # GET  /food/<name>       — Get a specific food item by name
+# GET  /search?q=         — Search food catalog (no auth required)
 #
-# food_service.py handles in-memory food storage
-# ml_service.py wraps CNN prediction (predict.py + calorie_lookup.py)
+# NOTE: CNN image prediction (POST /predict) is in predict_routes.py
+# food_service.py handles database food storage
 # =============================================================================
 from flask import Blueprint, jsonify, request
 
@@ -75,6 +72,17 @@ def manual_entry():
                 "fat (g)": "float",
             },
         }), 400
+
+    # ── Server-side validation ──────────────────────────────
+    if len(food_name.strip()) < 2:
+        return jsonify({"error": "Food name must be at least 2 characters"}), 400
+
+    if calories is not None and (calories < 0 or calories > 9999):
+        return jsonify({"error": "Calories must be between 0 and 9999 kcal"}), 400
+
+    for macro_name, macro_val in [("protein", protein), ("carbs", carbs), ("fat", fat)]:
+        if macro_val < 0 or macro_val > 999:
+            return jsonify({"error": f"{macro_name.capitalize()} must be between 0 and 999 g"}), 400
 
 
     food = food_service.create_food_from_macros(

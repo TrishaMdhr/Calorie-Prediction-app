@@ -1,14 +1,13 @@
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../config/api_config.dart';
 import '../models/user_model.dart';
 import '../models/food_log_model.dart';
-
-// Android emulator routes to host via 10.0.2.2; change for real device/production
-const _kBaseUrl = 'http://10.0.2.2:5000';
 
 class AppProvider extends ChangeNotifier {
   UserModel user = UserModel();
@@ -24,6 +23,10 @@ class AppProvider extends ChangeNotifier {
   List<String> serverRecommendations = [];
   List<Map<String, dynamic>> serverAlerts = [];
   Map<String, dynamic>? regressionMetrics;
+  Map<String, dynamic>? weeklySummary;
+  List<Map<String, dynamic>> calorieHistory = [];
+  List<Map<String, dynamic>> foodSearchResults = [];
+  bool isBackendReachable = false;
 
   // Auth token
   String? _authToken;
@@ -33,12 +36,17 @@ class AppProvider extends ChangeNotifier {
   }
 
   Future<void> _init() async {
+    await ApiConfig.loadSavedServerUrl(); // load saved server URL before any API calls
     await _loadLocalPrefs();
     await _loadHistory();
     await _checkAndResetForNewDay();
+    await checkBackendConnection();
     if (_authToken != null) {
+      fetchUserProfile();
       fetchTodayLogs();
       fetchTodayCaloriesAndRecommendations();
+      fetchAlerts();
+      fetchWeeklySummary();
     }
   }
 
@@ -166,13 +174,33 @@ class AppProvider extends ChangeNotifier {
     if (_authToken != null) 'Authorization': 'Bearer $_authToken',
   };
 
+  String _networkError(Object error) =>
+      'Cannot reach server at ${ApiConfig.baseUrl}. '
+      'Start the backend (python app.py) and try again.';
+
+  /// Ping backend health endpoint — useful for debugging connectivity.
+  Future<bool> checkBackendConnection() async {
+    try {
+      final resp = await http
+          .get(Uri.parse(ApiConfig.endpoint('/')))
+          .timeout(const Duration(seconds: 5));
+      isBackendReachable = resp.statusCode == 200;
+      notifyListeners();
+      return isBackendReachable;
+    } catch (_) {
+      isBackendReachable = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   // ── AUTH ─────────────────────────────────────────────────
 
   /// Registers user via server, returns null on success or an error string.
   Future<String?> registerAction(String email, String password, String name) async {
     try {
       final resp = await http.post(
-        Uri.parse('$_kBaseUrl/register'),
+        Uri.parse(ApiConfig.endpoint('/register')),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'name': name,
@@ -182,29 +210,21 @@ class AppProvider extends ChangeNotifier {
         }),
       ).timeout(const Duration(seconds: 10));
 
-      final data = jsonDecode(resp.body);
+      Map<String, dynamic> data;
+      try {
+        data = jsonDecode(resp.body) as Map<String, dynamic>;
+      } catch (_) {
+        return 'Invalid server response (${resp.statusCode})';
+      }
 
       if (resp.statusCode == 201) {
-        _authToken = data['token'];
-        user = UserModel(
-          name: data['name'] ?? name,
-          email: email,
-          calorieGoal: (data['daily_calorie_goal'] as num?)?.toDouble() ?? 2000,
-        );
-        isLoggedIn = true;
-        await _saveLocalUserInfo();
+        isBackendReachable = true;
         notifyListeners();
         return null;
       }
-      return data['error'] ?? 'Registration failed';
-    } catch (_) {
-      // Offline fallback: register locally
-      if (emailExists(email)) return 'Email already registered';
-      registerUser(email, password, name);
-      user = UserModel(name: name, email: email);
-      isLoggedIn = true;
-      notifyListeners();
-      return null;
+      return data['error']?.toString() ?? 'Registration failed (${resp.statusCode})';
+    } catch (e) {
+      return _networkError(e);
     }
   }
 
@@ -212,12 +232,17 @@ class AppProvider extends ChangeNotifier {
   Future<String?> loginAction(String email, String password) async {
     try {
       final resp = await http.post(
-        Uri.parse('$_kBaseUrl/login'),
+        Uri.parse(ApiConfig.endpoint('/login')),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'email': email, 'password': password}),
       ).timeout(const Duration(seconds: 10));
 
-      final data = jsonDecode(resp.body);
+      Map<String, dynamic> data;
+      try {
+        data = jsonDecode(resp.body) as Map<String, dynamic>;
+      } catch (_) {
+        return 'Invalid server response (${resp.statusCode})';
+      }
 
       if (resp.statusCode == 200) {
         _authToken = data['token'];
@@ -227,21 +252,130 @@ class AppProvider extends ChangeNotifier {
           calorieGoal: (data['daily_calorie_goal'] as num?)?.toDouble() ?? 0,
         );
         isLoggedIn = true;
+        isBackendReachable = true;
         await _saveLocalUserInfo();
+        await fetchUserProfile();
         fetchTodayLogs();
         fetchTodayCaloriesAndRecommendations();
+        fetchAlerts();
         notifyListeners();
         return null;
       }
-      return data['error'] ?? 'Login failed';
+      return data['error']?.toString() ?? 'Login failed (${resp.statusCode})';
+    } catch (e) {
+      return _networkError(e);
+    }
+  }
+
+  /// Resets user password, returns null on success or an error string.
+  Future<String?> resetPasswordAction(String email, String newPassword) async {
+    try {
+      final resp = await http.post(
+        Uri.parse(ApiConfig.endpoint('/forgot-password')),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': email.trim(),
+          'password': newPassword,
+        }),
+      ).timeout(const Duration(seconds: 10));
+
+      Map<String, dynamic> data;
+      try {
+        data = jsonDecode(resp.body) as Map<String, dynamic>;
+      } catch (_) {
+        return 'Invalid server response (${resp.statusCode})';
+      }
+
+      if (resp.statusCode == 200) {
+        // Also update locally registered fallback users if they exist
+        for (var u in registeredUsers) {
+          if (u['email']?.toLowerCase() == email.trim().toLowerCase()) {
+            u['password'] = newPassword;
+            await _saveUsers();
+            break;
+          }
+        }
+        return null;
+      }
+      return data['error']?.toString() ?? 'Password reset failed (${resp.statusCode})';
+    } catch (e) {
+      // Offline fallback: check local user list
+      final normalizedEmail = email.trim().toLowerCase();
+      bool foundLocal = false;
+      for (var u in registeredUsers) {
+        if (u['email']?.toLowerCase() == normalizedEmail) {
+          u['password'] = newPassword;
+          foundLocal = true;
+          break;
+        }
+      }
+      if (foundLocal) {
+        await _saveUsers();
+        return null;
+      }
+      return _networkError(e);
+    }
+  }
+
+  /// Load profile fields from server after login.
+  Future<void> fetchUserProfile() async {
+    if (_authToken == null) return;
+    try {
+      final resp = await http.get(
+        Uri.parse(ApiConfig.endpoint('/user/profile')),
+        headers: _authHeaders,
+      ).timeout(const Duration(seconds: 10));
+
+      if (resp.statusCode == 200) {
+        final data = jsonDecode(resp.body) as Map<String, dynamic>;
+        user.name = data['name']?.toString() ?? user.name;
+        user.email = data['email']?.toString() ?? user.email;
+        final goal = (data['daily_calorie_goal'] as num?)?.toDouble();
+        if (goal != null && goal > 0) user.calorieGoal = goal;
+
+        // Sync all profile fields — critical for teammates logging in on a fresh device
+        final gender = data['gender']?.toString() ?? '';
+        if (gender.isNotEmpty) user.gender = gender;
+        final age = (data['age'] as num?)?.toInt() ?? 0;
+        if (age > 0) user.age = age;
+        final weight = (data['weight'] as num?)?.toDouble() ?? 0.0;
+        if (weight > 0) user.weight = weight;
+        final hFeet = (data['height_feet'] as num?)?.toInt() ?? 0;
+        if (hFeet > 0) user.heightFeet = hFeet;
+        final hInch = (data['height_inch'] as num?)?.toInt() ?? 0;
+        if (hInch > 0) user.heightInch = hInch;
+        final activity = data['activity_level']?.toString() ?? '';
+        if (activity.isNotEmpty) user.activityLevel = activity;
+        final fitnessGoal = data['fitness_goal']?.toString() ?? '';
+        if (fitnessGoal.isNotEmpty) user.fitnessGoal = fitnessGoal;
+
+        await _saveLocalUserInfo();
+        notifyListeners();
+      }
+    } catch (_) {}
+  }
+
+  /// Sync name/profile updates to server.
+  Future<bool> syncProfileToServer({String? name}) async {
+    if (_authToken == null) return false;
+    try {
+      final resp = await http.put(
+        Uri.parse(ApiConfig.endpoint('/user/profile')),
+        headers: _authHeaders,
+        body: jsonEncode({
+          if (name != null) 'name': name,
+          'gender': user.gender,
+          'age': user.age,
+          'weight': user.weight,
+          'height_feet': user.heightFeet,
+          'height_inch': user.heightInch,
+          'activity_level': user.activityLevel,
+          'fitness_goal': user.fitnessGoal,
+        }),
+      ).timeout(const Duration(seconds: 10));
+      return resp.statusCode == 200;
     } catch (_) {
-      // Offline fallback
-      if (!checkUserExists(email, password)) return 'Invalid email or password';
-      final name = getNameByEmail(email);
-      user = UserModel(name: name, email: email);
-      isLoggedIn = true;
-      notifyListeners();
-      return null;
+      return false;
     }
   }
 
@@ -257,7 +391,7 @@ class AppProvider extends ChangeNotifier {
     try {
       // First register the food item on server to get a food_id
       final foodResp = await http.post(
-        Uri.parse('$_kBaseUrl/manual'),
+        Uri.parse(ApiConfig.endpoint('/manual')),
         headers: _authHeaders,
         body: jsonEncode({
           'food_name': log.name,
@@ -274,7 +408,7 @@ class AppProvider extends ChangeNotifier {
 
         // Then log it
         await http.post(
-          Uri.parse('$_kBaseUrl/log'),
+          Uri.parse(ApiConfig.endpoint('/log')),
           headers: _authHeaders,
           body: jsonEncode({
             'food_id': foodId,
@@ -303,7 +437,7 @@ class AppProvider extends ChangeNotifier {
     if (_authToken != null && log.logId != null) {
       try {
         await http.delete(
-          Uri.parse('$_kBaseUrl/log/${log.logId}'),
+          Uri.parse(ApiConfig.endpoint('/log/${log.logId}')),
           headers: _authHeaders,
         ).timeout(const Duration(seconds: 10));
       } catch (_) {}
@@ -315,7 +449,7 @@ class AppProvider extends ChangeNotifier {
     if (_authToken == null) return;
     try {
       final resp = await http.get(
-        Uri.parse('$_kBaseUrl/logs'),
+        Uri.parse(ApiConfig.endpoint('/logs')),
         headers: _authHeaders,
       ).timeout(const Duration(seconds: 10));
 
@@ -341,7 +475,7 @@ class AppProvider extends ChangeNotifier {
     if (_authToken == null) return;
     try {
       final resp = await http.get(
-        Uri.parse('$_kBaseUrl/daily'),
+        Uri.parse(ApiConfig.endpoint('/daily')),
         headers: _authHeaders,
       ).timeout(const Duration(seconds: 10));
 
@@ -352,7 +486,12 @@ class AppProvider extends ChangeNotifier {
 
         // Derive alerts from recommendations that look like warnings
         serverAlerts = recs
-            .where((r) => (r['message'] as String).toLowerCase().contains('exceeded'))
+            .where((r) {
+              final msg = (r['message'] as String).toLowerCase();
+              return msg.contains('exceeded') ||
+                     msg.contains('below') ||
+                     msg.contains('high calorie');
+            })
             .map<Map<String, dynamic>>((r) => {'message': r['message']})
             .toList();
 
@@ -372,7 +511,7 @@ class AppProvider extends ChangeNotifier {
     if (_authToken == null) return null;
     try {
       final resp = await http.get(
-        Uri.parse('$_kBaseUrl/predict/future?day=$dayOffset'),
+        Uri.parse(ApiConfig.endpoint('/predict/future?day=$dayOffset')),
         headers: _authHeaders,
       ).timeout(const Duration(seconds: 10));
 
@@ -388,12 +527,117 @@ class AppProvider extends ChangeNotifier {
     return null;
   }
 
+  /// Search food catalog on server.
+  Future<void> searchFoods(String query) async {
+    if (query.trim().isEmpty) {
+      foodSearchResults = [];
+      notifyListeners();
+      return;
+    }
+    try {
+      final resp = await http.get(
+        Uri.parse(ApiConfig.endpoint('/search?q=${Uri.encodeQueryComponent(query)}')),
+      ).timeout(const Duration(seconds: 10));
+
+      if (resp.statusCode == 200) {
+        final data = jsonDecode(resp.body);
+        foodSearchResults = List<Map<String, dynamic>>.from(data['results'] ?? []);
+        notifyListeners();
+      }
+    } catch (_) {
+      foodSearchResults = [];
+      notifyListeners();
+    }
+  }
+
+  /// Fetch dedicated calorie spike alerts from server.
+  Future<void> fetchAlerts({int days = 30}) async {
+    if (_authToken == null) return;
+    try {
+      final resp = await http.get(
+        Uri.parse(ApiConfig.endpoint('/alerts?days=$days')),
+        headers: _authHeaders,
+      ).timeout(const Duration(seconds: 10));
+
+      if (resp.statusCode == 200) {
+        final data = jsonDecode(resp.body);
+        final List alerts = data['alerts'] ?? [];
+        serverAlerts = alerts
+            .map<Map<String, dynamic>>((a) => Map<String, dynamic>.from(a as Map))
+            .toList();
+        notifyListeners();
+      }
+    } catch (_) {}
+  }
+
+  /// Fetch 7-day weekly summary from server.
+  Future<void> fetchWeeklySummary() async {
+    if (_authToken == null) return;
+    try {
+      final resp = await http.get(
+        Uri.parse(ApiConfig.endpoint('/weekly')),
+        headers: _authHeaders,
+      ).timeout(const Duration(seconds: 10));
+
+      if (resp.statusCode == 200) {
+        weeklySummary = jsonDecode(resp.body) as Map<String, dynamic>;
+        notifyListeners();
+      }
+    } catch (_) {}
+  }
+
+  /// Fetch calorie history for charts/trends.
+  Future<void> fetchCalorieHistory({int days = 30}) async {
+    if (_authToken == null) return;
+    try {
+      final resp = await http.get(
+        Uri.parse(ApiConfig.endpoint('/history?days=$days')),
+        headers: _authHeaders,
+      ).timeout(const Duration(seconds: 10));
+
+      if (resp.statusCode == 200) {
+        final data = jsonDecode(resp.body);
+        calorieHistory = List<Map<String, dynamic>>.from(data['entries'] ?? []);
+        notifyListeners();
+      }
+    } catch (_) {}
+  }
+
+  /// CNN food image prediction — returns parsed JSON or null on failure.
+  /// Returns a map with keys: food, calories, protein, carbs, fat, confidence, confidence_tier
+  /// On server error, returns a map with key 'error' describing the issue.
+  Future<Map<String, dynamic>?> predictFoodFromImage(List<int> imageBytes) async {
+    try {
+      final request = http.MultipartRequest('POST', Uri.parse(ApiConfig.predictUrl));
+      request.files.add(
+        http.MultipartFile.fromBytes('image', imageBytes, filename: 'food.jpg'),
+      );
+
+      // 60s timeout — TF cold-start (loading food_model.h5) can take 30–40s
+      final streamed = await request.send().timeout(const Duration(seconds: 60));
+      final response = await http.Response.fromStream(streamed);
+
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode == 200) {
+        return data;
+      }
+
+      // Surface the real error from the server body
+      return {'error': data['error'] ?? data['hint'] ?? 'Server returned ${response.statusCode}'};
+    } on TimeoutException {
+      return {'error': 'Request timed out (60 s). The server may still be loading the model — please retry.'};
+    } catch (e) {
+      return {'error': 'Cannot reach server at ${ApiConfig.baseUrl}. Check your connection and server URL in Settings.'};
+    }
+  }
+
   /// Push updated calorie goal to server.
   Future<void> syncGoalToServer(double goal) async {
     if (_authToken == null) return;
     try {
       await http.put(
-        Uri.parse('$_kBaseUrl/user/goal'),
+        Uri.parse(ApiConfig.endpoint('/user/goal')),
         headers: _authHeaders,
         body: jsonEncode({'daily_calorie_goal': goal}),
       ).timeout(const Duration(seconds: 10));

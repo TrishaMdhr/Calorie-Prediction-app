@@ -60,6 +60,7 @@ def log_food():
     )
     today_total = tracking_service.get_today_calories(user_id)
     goal = user_service.get_daily_goal(user_id)
+    gender = user_service.get_user_gender(user_id)
 
     response = {
         "message": "Food logged successfully",
@@ -68,7 +69,9 @@ def log_food():
         "today_total": today_total,
         "daily_goal": goal,
     }
-    formatted, _ = recommendations_for_calories(today_total, is_daily=True, daily_goal=goal)
+    formatted, _ = recommendations_for_calories(
+        today_total, is_daily=True, daily_goal=goal, gender=gender
+    )
     response.update(formatted)
     return jsonify(response), 201
 
@@ -130,11 +133,12 @@ def daily_total(user_id=None):
 
     total = tracking_service.get_today_calories(user_id)
     goal = user_service.get_daily_goal(user_id)
+    gender = user_service.get_user_gender(user_id)
     history = tracking_service.get_daily_history(user_id, days=7)
     alerts = get_all_alerts(history)
 
     _, recommendations = recommendations_for_calories(
-        total, is_daily=True, daily_goal=goal, alerts=alerts
+        total, is_daily=True, daily_goal=goal, gender=gender, alerts=alerts
     )
 
     return jsonify({
@@ -156,10 +160,11 @@ def weekly_summary(user_id=None):
 
     summary = tracking_service.get_weekly_summary(user_id)
     goal = user_service.get_daily_goal(user_id)
+    gender = user_service.get_user_gender(user_id)
     alerts = get_all_alerts(summary["daily_breakdown"])
 
     formatted, _ = recommendations_for_calories(
-        summary["average_calories"], is_daily=True, daily_goal=goal, alerts=alerts
+        summary["average_calories"], is_daily=True, daily_goal=goal, gender=gender, alerts=alerts
     )
 
     summary["user_id"] = user_id

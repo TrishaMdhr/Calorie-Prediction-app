@@ -1,5 +1,7 @@
 from flask import Blueprint, jsonify
 
+from database import use_sqlite
+
 health_bp = Blueprint("health", __name__)
 
 
@@ -18,6 +20,7 @@ def home():
         "status": "running",
         "app": "Calorie Monitoring API",
         "version": "2.0",
+        "database": "sqlite" if use_sqlite else "mysql",
         "ml_available": _ml_status(),
     })
 

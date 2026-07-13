@@ -9,8 +9,8 @@ def format_recommendations(recommendations):
     }
 
 
-def recommendations_for_calories(calories, is_daily=False, daily_goal=2200, alerts=None):
+def recommendations_for_calories(calories, is_daily=False, daily_goal=2200, gender='Male', alerts=None):
     recs = build_recommendations(
-        calories, is_daily=is_daily, daily_goal=daily_goal, alerts=alerts
+        calories, is_daily=is_daily, daily_goal=daily_goal, gender=gender, alerts=alerts
     )
     return format_recommendations(recs), recs

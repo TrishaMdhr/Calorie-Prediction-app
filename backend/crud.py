@@ -60,6 +60,15 @@ def update_user_profile(db: Session, user_id, gender=None, age=None, weight=None
     db.refresh(user)
     return user
 
+def update_user_password(db: Session, email: str, new_password: str):
+    user = get_user_by_email(db, email)
+    if not user:
+        return None
+    user.password = hash_password(new_password)
+    db.commit()
+    db.refresh(user)
+    return user
+
 def set_calculated_goal(db: Session, user_id, daily_goal):
     user = get_user_by_id(db, user_id)
     if user:

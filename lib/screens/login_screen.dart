@@ -15,6 +15,7 @@ import '../theme.dart';
 import '../providers/app_provider.dart';
 import 'signup_screen.dart';
 import 'dashboard_screen.dart';
+import 'forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -196,7 +197,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   const Text('Remember me'),
                   const Spacer(),
                   TextButton(
-                    onPressed: () {},
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const ForgotPasswordScreen()),
+                    ),
                     child: Text('Forgot password?',
                         style: TextStyle(
                             color: AppTheme.primary,

@@ -41,6 +41,9 @@ class _CaloriePredictionScreenState extends State<CaloriePredictionScreen> {
   void initState() {
     super.initState();
     _loadServerPrediction();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<AppProvider>(context, listen: false).fetchCalorieHistory(days: 7);
+    });
   }
 
   Future<void> _loadServerPrediction() async {
@@ -643,46 +646,4 @@ class _CaloriePredictionScreenState extends State<CaloriePredictionScreen> {
       ],
     );
   }
-}
-
-// ── WMA Formula Breakdown Widget ─────────────────────────────
-class _WmaBreakdown extends StatelessWidget {
-  final AppProvider provider;
-  const _WmaBreakdown({required this.provider});
-
-  @override
-  Widget build(BuildContext context) {
-    final history = provider.dailyCalorieHistory;
-    final labels = ['Today', 'Yesterday', '2 Days Ago'];
-    final weights = [0.5, 0.3, 0.2];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('WMA Breakdown:',
-            style: TextStyle(
-                color: Colors.white70,
-                fontSize: 11,
-                fontWeight: FontWeight.bold)),
-        const SizedBox(height: 6),
-        ...List.generate(history.length, (i) {
-          final contribution = history[i] * weights[i];
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 2),
-            child: Text(
-              '${labels[i]}: ${history[i].toInt()} × ${weights[i]} = ${contribution.toInt()} kcal',
-              style:
-              const TextStyle(color: Colors.white70, fontSize: 11),
-            ),
-          );
-        }),
-        const Divider(color: Colors.white30, height: 12),
-        Text(
-          'Prediction: ${provider.wmaNextDayPrediction.toInt()} kcal',
-          style: const TextStyle(
-              color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
-        ),
-      ],
-    );
-  }
-}
+}
