@@ -164,15 +164,15 @@ class _CaloriePredictionScreenState extends State<CaloriePredictionScreen> {
                     decoration: BoxDecoration(
                       gradient: dayComplete && tomorrowKcal != null
                           ? const LinearGradient(
-                              colors: [Color(0xFF00C853), Color(0xFF1B5E20)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            )
+                        colors: [Color(0xFF00C853), Color(0xFF1B5E20)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
                           : LinearGradient(
-                              colors: isDark
-                                  ? [const Color(0xFF3A3A3A), const Color(0xFF2C2C2C)]
-                                  : [Colors.grey.shade300, Colors.grey.shade400],
-                            ),
+                        colors: isDark
+                            ? [const Color(0xFF3A3A3A), const Color(0xFF2C2C2C)]
+                            : [Colors.grey.shade300, Colors.grey.shade400],
+                      ),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Column(
@@ -196,8 +196,8 @@ class _CaloriePredictionScreenState extends State<CaloriePredictionScreen> {
                           dayComplete && tomorrowKcal != null
                               ? 'Avg of $historyCount day${historyCount > 1 ? 's' : ''}'
                               : hasData
-                                  ? 'Mark day done first'
-                                  : 'Log meals first',
+                              ? 'Mark day done first'
+                              : 'Log meals first',
                           style: const TextStyle(
                               color: Colors.white60, fontSize: 10),
                         ),
@@ -214,15 +214,15 @@ class _CaloriePredictionScreenState extends State<CaloriePredictionScreen> {
                     decoration: BoxDecoration(
                       gradient: _serverPrediction != null
                           ? const LinearGradient(
-                              colors: [Color(0xFF7B1FA2), Color(0xFF4A148C)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            )
+                        colors: [Color(0xFF7B1FA2), Color(0xFF4A148C)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
                           : LinearGradient(
-                              colors: isDark
-                                  ? [const Color(0xFF3A3A3A), const Color(0xFF2C2C2C)]
-                                  : [Colors.grey.shade300, Colors.grey.shade400],
-                            ),
+                        colors: isDark
+                            ? [const Color(0xFF3A3A3A), const Color(0xFF2C2C2C)]
+                            : [Colors.grey.shade300, Colors.grey.shade400],
+                      ),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Column(
@@ -237,20 +237,20 @@ class _CaloriePredictionScreenState extends State<CaloriePredictionScreen> {
                                 letterSpacing: 0.5)),
                         _loadingPredict
                             ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 2, color: Colors.white),
-                              )
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white),
+                        )
                             : Text(
-                                _serverPrediction != null
-                                    ? '${_serverPrediction!.toInt()} kcal'
-                                    : '-- kcal',
-                                style: const TextStyle(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white),
-                              ),
+                          _serverPrediction != null
+                              ? '${_serverPrediction!.toInt()} kcal'
+                              : '-- kcal',
+                          style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white),
+                        ),
                         Text(
                           _serverPrediction != null
                               ? 'Server Trend Fit Model'
@@ -277,7 +277,7 @@ class _CaloriePredictionScreenState extends State<CaloriePredictionScreen> {
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   onPressed:
-                      hasData ? () => _confirmFinishDay(context, provider) : null,
+                  hasData ? () => _confirmFinishDay(context, provider) : null,
                   icon: const Icon(Icons.check_circle_outline),
                   label: const Text("I'm done eating for today"),
                   style: ElevatedButton.styleFrom(
@@ -294,11 +294,18 @@ class _CaloriePredictionScreenState extends State<CaloriePredictionScreen> {
                 width: double.infinity,
                 child: OutlinedButton.icon(
                   onPressed: () {
-                    provider.resetDay();
+                    provider.undoEndDay();
                     _loadServerPrediction();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                            'Day unlocked — you can add more food now'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
                   },
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Start a new day'),
+                  icon: const Icon(Icons.undo),
+                  label: const Text('Undo — Add More Food'),
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size(double.infinity, 48),
                   ),
@@ -471,7 +478,7 @@ class _CaloriePredictionScreenState extends State<CaloriePredictionScreen> {
                           : 'Once you\'re done eating for the day, tap the button above to see tomorrow\'s prediction from both models.',
                       style: TextStyle(
                           color:
-                              isDark ? Colors.blue.shade300 : Colors.blue),
+                          isDark ? Colors.blue.shade300 : Colors.blue),
                     ),
                   ),
                 ],
@@ -489,7 +496,7 @@ class _CaloriePredictionScreenState extends State<CaloriePredictionScreen> {
       context: context,
       builder: (_) => AlertDialog(
         shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Done for today?'),
         content: const Text(
             'Mark today as complete to calculate tomorrow\'s calorie prediction using both Weighted Moving Average and the ML Trend model.'),
@@ -517,7 +524,7 @@ class _CaloriePredictionScreenState extends State<CaloriePredictionScreen> {
     final subTextColor = isDark ? Colors.white70 : Colors.grey;
     final hasRealData = metrics['has_real_data'] as bool? ?? false;
     final sampleSize = metrics['sample_size'] as int? ?? 0;
-    
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -546,8 +553,8 @@ class _CaloriePredictionScreenState extends State<CaloriePredictionScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: hasRealData 
-                      ? Colors.green.withAlpha(38) 
+                  color: hasRealData
+                      ? Colors.green.withAlpha(38)
                       : Colors.orange.withAlpha(38),
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -665,7 +672,7 @@ class _WmaBreakdown extends StatelessWidget {
             child: Text(
               '${labels[i]}: ${history[i].toInt()} × ${weights[i]} = ${contribution.toInt()} kcal',
               style:
-                  const TextStyle(color: Colors.white70, fontSize: 11),
+              const TextStyle(color: Colors.white70, fontSize: 11),
             ),
           );
         }),

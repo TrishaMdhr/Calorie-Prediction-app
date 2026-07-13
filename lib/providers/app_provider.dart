@@ -1,29 +1,4 @@
-// =============================================================================
-// FILE: lib/providers/app_provider.dart
-// ROLE: Central state manager + all backend API calls
-// -----------------------------------------------------------------------------
-// STATE:  user, todayLogs, savedMacros, dailyCalorieHistory,
-//         serverRecommendations, serverAlerts, isLoggedIn, dayCompleted
-//
-// AUTH:   loginAction()        → POST /login   (JWT stored in SharedPreferences)
-//         registerAction()     → POST /register
-//         logout()             → clears token + local state
-//
-// LOGS:   addFoodLog()         → local update + POST /manual + POST /log
-//         removeFoodLog()      → local update + DELETE /log/<id>
-//         fetchTodayLogs()     → GET /logs
-//
-// STATS:  fetchTodayCaloriesAndRecommendations() → GET /daily
-//         fetchFuturePrediction()  → GET /predict/future?day=N  (ML regression)
-//
-// GOAL:   setCalorieGoal()     → local + PUT /user/goal
-//         syncGoalToServer()   → PUT /user/goal
-//
-// LOCAL:  wmaNextDayPrediction (Weighted Moving Average — no server needed)
-//         calculateGoal()      (Mifflin-St Jeor BMR + TDEE)
-//
-// BASE URL: http://10.0.2.2:5000  (emulator) — change to PC IP for real device
-// =============================================================================
+
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -480,6 +455,20 @@ class AppProvider extends ChangeNotifier {
 
   void resetDay() {
     todayLogs = [];
+    dayCompleted = false;
+    notifyListeners();
+  }
+
+  /// Undo "day complete" — removes the history entry that was just
+  /// recorded so it isn't double-counted, and unlocks food logging
+  /// again for today WITHOUT clearing today's already-logged food.
+  /// Use this when the user wants to correct/add more food after
+  /// tapping "I'm done eating for today" by mistake.
+  void undoEndDay() {
+    if (dailyCalorieHistory.isNotEmpty) {
+      dailyCalorieHistory.removeAt(0); // remove the just-added snapshot
+      _saveHistory();
+    }
     dayCompleted = false;
     notifyListeners();
   }

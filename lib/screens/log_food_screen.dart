@@ -445,92 +445,92 @@ class _ScanPanelState extends State<_ScanPanel> {
 
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (_imageBytes != null && _errorMsg != null) ...[
-              ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Image.memory(_imageBytes!,
-                    height: 160,
-                    width: double.infinity,
-                    fit: BoxFit.cover),
-              ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                      color: Colors.orange.withOpacity(0.4)),
-                ),
-                child: Row(children: [
-                  const Icon(Icons.warning_amber_rounded,
-                      color: Colors.orange),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(_errorMsg!,
-                        style: const TextStyle(
-                            color: Colors.orange)),
-                  ),
-                ]),
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton.icon(
-                onPressed: _addManually,
-                icon: const Icon(Icons.edit),
-                label: const Text('Add Manually'),
-              ),
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
-                onPressed: () => setState(() {
-                  _imageBytes = null;
-                  _errorMsg = null;
-                }),
-                icon: const Icon(Icons.refresh),
-                label: const Text('Try Again'),
-              ),
-            ] else ...[
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: AppTheme.surface,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Icon(Icons.qr_code_scanner,
-                    size: 80, color: Colors.grey),
-              ),
-              const SizedBox(height: 24),
-              const Text('Scan your food',
-                  style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              const Text(
-                'Take a photo and we\'ll fill in\nthe nutrition details for you',
-                textAlign: TextAlign.center,
-                style:
-                TextStyle(color: Colors.grey, fontSize: 13),
-              ),
-              const SizedBox(height: 28),
-              ElevatedButton.icon(
-                onPressed: () =>
-                    _pickAndScan(ImageSource.camera),
-                icon: const Icon(Icons.camera_alt),
-                label: const Text('Open Camera'),
-              ),
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
-                onPressed: () =>
-                    _pickAndScan(ImageSource.gallery),
-                icon: const Icon(Icons.photo_library_outlined),
-                label: const Text('Upload from Gallery'),
-              ),
-            ],
+          padding: const EdgeInsets.all(24),
+          child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+          if (_imageBytes != null && _errorMsg != null) ...[
+      ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: Image.memory(_imageBytes!,
+          height: 160,
+          width: double.infinity,
+          fit: BoxFit.cover),
+    ),
+    const SizedBox(height: 16),
+    Container(
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+    color: Colors.orange.withOpacity(0.1),
+    borderRadius: BorderRadius.circular(12),
+    border: Border.all(
+    color: Colors.orange.withOpacity(0.4)),
+    ),
+    child: Row(children: [
+    const Icon(Icons.warning_amber_rounded,
+    color: Colors.orange),
+    const SizedBox(width: 10),
+    Expanded(
+    child: Text(_errorMsg!,
+    style: const TextStyle(
+    color: Colors.orange)),
+    ),
+    ]),
+    ),
+    const SizedBox(height: 20),
+    ElevatedButton.icon(
+    onPressed: _addManually,
+    icon: const Icon(Icons.edit),
+    label: const Text('Add Manually'),
+    ),
+    const SizedBox(height: 12),
+    OutlinedButton.icon(
+    onPressed: () => setState(() {
+    _imageBytes = null;
+    _errorMsg = null;
+    }),
+    icon: const Icon(Icons.refresh),
+    label: const Text('Try Again'),
+    ),
+    ] else ...[
+    Container(
+    padding: const EdgeInsets.all(24),
+    decoration: BoxDecoration(
+    color: AppTheme.surface,
+    borderRadius: BorderRadius.circular(20),
+    ),
+      child: const Icon(Icons.qr_code_scanner,
+          size: 80, color: Colors.grey),
+    ),
+            const SizedBox(height: 24),
+            const Text('Scan your food',
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            const Text(
+              'Take a photo and we\'ll fill in\nthe nutrition details for you',
+              textAlign: TextAlign.center,
+              style:
+              TextStyle(color: Colors.grey, fontSize: 13),
+            ),
+            const SizedBox(height: 28),
+            ElevatedButton.icon(
+              onPressed: () =>
+                  _pickAndScan(ImageSource.camera),
+              icon: const Icon(Icons.camera_alt),
+              label: const Text('Open Camera'),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () =>
+                  _pickAndScan(ImageSource.gallery),
+              icon: const Icon(Icons.photo_library_outlined),
+              label: const Text('Upload from Gallery'),
+            ),
           ],
-        ),
+              ],
+          ),
       ),
     );
   }
@@ -570,9 +570,38 @@ class _ManualPanel extends StatefulWidget {
 class _ManualPanelState extends State<_ManualPanel> {
   final List<_FoodItem> _items = [_FoodItem()];
 
+  /// True if any of calories/protein/carbs/fat was entered as negative.
+  /// Empty fields are fine (they default to 0 later) — only actual
+  /// negative numbers are rejected.
+  bool _hasNegativeValue(_FoodItem item) {
+    final cal = double.tryParse(item.calCtrl.text);
+    final protein = double.tryParse(item.proteinCtrl.text);
+    final carbs = double.tryParse(item.carbsCtrl.text);
+    final fat = double.tryParse(item.fatCtrl.text);
+    return (cal != null && cal < 0) ||
+        (protein != null && protein < 0) ||
+        (carbs != null && carbs < 0) ||
+        (fat != null && fat < 0);
+  }
+
   void _saveToLog() {
     final provider =
     Provider.of<AppProvider>(context, listen: false);
+
+    // Reject negative calories/protein/carbs/fat before saving anything
+    for (final item in _items) {
+      if (_hasNegativeValue(item)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                'Calories, protein, carbs and fat cannot be negative'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+    }
+
     bool anyAdded = false;
     for (final item in _items) {
       final name = item.nameCtrl.text.trim();
@@ -613,62 +642,71 @@ class _ManualPanelState extends State<_ManualPanel> {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          ..._items.asMap().entries.map((entry) =>
-              _FoodItemForm(
-                item: entry.value,
-                index: entry.key,
-                canRemove: _items.length > 1,
-                onRemove: () => setState(
-                        () => _items.removeAt(entry.key)),
-                onSaveToMacros: () {
-                  final name =
-                  entry.value.nameCtrl.text.trim();
-                  final cal = double.tryParse(
-                      entry.value.calCtrl.text) ??
-                      0;
-                  if (name.isNotEmpty) {
-                    Provider.of<AppProvider>(context,
-                        listen: false)
-                        .saveToMacros(FoodLog(
-                      name: name,
-                      calories: cal,
-                      protein: double.tryParse(
-                          entry.value.proteinCtrl.text) ??
-                          0,
-                      carbs: double.tryParse(
-                          entry.value.carbsCtrl.text) ??
-                          0,
-                      fat: double.tryParse(
-                          entry.value.fatCtrl.text) ??
-                          0,
-                      mealType: widget.mealType,
-                    ));
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content: Text('Saved to macros!'),
-                          backgroundColor: Colors.green),
-                    );
-                  }
-                },
-              )),
-          const SizedBox(height: 8),
-          TextButton.icon(
-            onPressed: () =>
-                setState(() => _items.add(_FoodItem())),
-            icon: const Icon(Icons.add),
-            label: const Text('Add Another Item'),
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: _saveToLog,
-            child: const Text('Save To Log'),
-          ),
-          const SizedBox(height: 24),
-        ],
-      ),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+            children: [
+            ..._items.asMap().entries.map((entry) =>
+            _FoodItemForm(
+              item: entry.value,
+              index: entry.key,
+              canRemove: _items.length > 1,
+              onRemove: () => setState(
+                      () => _items.removeAt(entry.key)),
+              onSaveToMacros: () {
+                final name =
+                entry.value.nameCtrl.text.trim();
+                final cal = double.tryParse(
+                    entry.value.calCtrl.text) ??
+                    0;
+                if (_hasNegativeValue(entry.value)) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                          'Calories, protein, carbs and fat cannot be negative'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  return;
+                }
+                if (name.isNotEmpty) {
+                  Provider.of<AppProvider>(context,
+                      listen: false)
+                      .saveToMacros(FoodLog(
+                    name: name,
+                    calories: cal,
+                    protein: double.tryParse(
+                        entry.value.proteinCtrl.text) ??
+                        0,
+                    carbs: double.tryParse(
+                        entry.value.carbsCtrl.text) ??
+                        0,
+                    fat: double.tryParse(
+                        entry.value.fatCtrl.text) ??
+                        0,
+                    mealType: widget.mealType,
+                  ));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content: Text('Saved to macros!'),
+                        backgroundColor: Colors.green),
+                  );
+                }
+              },
+            )),
+        const SizedBox(height: 8),
+        TextButton.icon(
+          onPressed: () =>
+              setState(() => _items.add(_FoodItem())),
+          label: const Text('Add Another Item'),
+        ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _saveToLog,
+                child: const Text('Save To Log'),
+              ),
+              const SizedBox(height: 24),
+            ],
+        ),
     );
   }
 }

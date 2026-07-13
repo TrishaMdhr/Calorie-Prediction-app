@@ -48,6 +48,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void _tryLogFood(BuildContext context) {
     final provider =
     Provider.of<AppProvider>(context, listen: false);
+    if (provider.dayCompleted) {
+      _showDayCompleteDialog(context);
+      return;
+    }
     if (!provider.hasSetGoal) {
       _showSetGoalDialog(context);
     } else {
@@ -56,6 +60,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
         MaterialPageRoute(builder: (_) => const LogFoodScreen()),
       );
     }
+  }
+
+  void _showDayCompleteDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20)),
+        title: const Row(children: [
+          Text('✅ '),
+          Text('Day Already Marked Done'),
+        ]),
+        content: const Text(
+          'You already marked today as complete. Go to the Prediction '
+              'tab and tap "Undo — Add More Food" if you want to log '
+              'more food today.',
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Got it'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showSetGoalDialog(BuildContext context) {

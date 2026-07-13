@@ -7,7 +7,6 @@
 // Used by: AppProvider.todayLogs, LogFoodScreen, DashboardScreen
 // =============================================================================
 class FoodLog {
-
   int? logId; // server-assigned ID for deletion
   String name;
   double calories;
@@ -27,4 +26,4 @@ class FoodLog {
     this.mealType = 'Lunch',
     DateTime? loggedAt,
   }) : loggedAt = loggedAt ?? DateTime.now();
-}
+}

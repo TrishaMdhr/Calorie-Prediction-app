@@ -14,7 +14,6 @@ import 'package:provider/provider.dart';
 import '../theme.dart';
 import '../providers/app_provider.dart';
 import 'login_screen.dart';
-import 'dashboard_screen.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -114,7 +113,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Account created successfully!'),
+          content: Text('Account created successfully! Please log in.'),
           backgroundColor: Colors.green,
           duration: Duration(seconds: 2),
         ),
@@ -122,9 +121,12 @@ class _SignupScreenState extends State<SignupScreen> {
 
       Future.delayed(const Duration(seconds: 2), () {
         if (mounted) {
+          // Sign the freshly-created session back out so the user has
+          // to actually log in, matching the expected signup → login flow.
+          provider.logout();
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const DashboardScreen()),
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
           );
         }
       });
