@@ -38,7 +38,7 @@ def register_user(name, email, password, daily_calorie_goal=None):
         if crud.get_user_by_email(db, email):
             return None, "Email already registered"
 
-        goal = daily_calorie_goal or Config.DEFAULT_DAILY_GOAL
+        goal = daily_calorie_goal if daily_calorie_goal is not None else 0
         db_user = crud.create_user(db, name, email, password, daily_goal=goal)
         return _user_to_dict(db_user), None
 
@@ -64,9 +64,9 @@ def login_user(email, password):
 def get_daily_goal(user_id):
     with SessionLocal() as db:
         db_user = crud.get_user_by_id(db, user_id)
-        if db_user:
+        if db_user and db_user.daily_goal is not None:
             return db_user.daily_goal
-        return Config.DEFAULT_DAILY_GOAL
+        return 0
 
 
 def get_user_gender(user_id):

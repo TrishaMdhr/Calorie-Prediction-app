@@ -223,7 +223,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 leading: CircleAvatar(
                   backgroundColor:
                   AppTheme.primary.withAlpha(25),
-                  child: Text(log.mealType[0],
+                  child: Text(log.mealType.isNotEmpty ? log.mealType[0] : '?',
                       style: TextStyle(
                           color: AppTheme.primary)),
                 ),

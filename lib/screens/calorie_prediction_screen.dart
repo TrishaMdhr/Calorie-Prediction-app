@@ -495,31 +495,164 @@ class _CaloriePredictionScreenState extends State<CaloriePredictionScreen> {
   }
 
   void _confirmFinishDay(BuildContext context, AppProvider provider) {
-    showDialog(
+    final todayKcal = provider.todayCalories;
+    final goal = provider.user.calorieGoal;
+    final remaining = (goal - todayKcal).abs();
+    final isOverGoal = todayKcal > goal && goal > 0;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showModalBottomSheet(
       context: context,
-      builder: (_) => AlertDialog(
-        shape:
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Done for today?'),
-        content: const Text(
-            'Mark today as complete to calculate tomorrow\'s calorie prediction using both Weighted Moving Average and the ML Trend model.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Not yet'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              provider.markDayComplete();
-              Navigator.pop(context);
-              _loadServerPrediction();
-            },
-            child: const Text('Yes, I\'m done'),
-          ),
-        ],
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 36),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Drag handle
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: isDark ? Colors.grey.shade700 : Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Icon badge
+            Container(
+              width: 70,
+              height: 70,
+              decoration: BoxDecoration(
+                color: AppTheme.primary.withAlpha(30),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.restaurant_rounded,
+                color: AppTheme.primary,
+                size: 36,
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Title
+            Text(
+              "All done for today? 🎉",
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            // Subtitle
+            Text(
+              "Marking today complete will lock your food log and calculate tomorrow's calorie prediction.",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                color: isDark ? Colors.white60 : Colors.grey.shade600,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Today's summary card
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF2C2C2C) : const Color(0xFFF5F5F5),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _StatChip(
+                    label: "Today's Intake",
+                    value: "${todayKcal.toInt()} kcal",
+                    color: AppTheme.primary,
+                    isDark: isDark,
+                  ),
+                  Container(width: 1, height: 36, color: isDark ? Colors.grey.shade700 : Colors.grey.shade300),
+                  _StatChip(
+                    label: goal > 0
+                        ? (isOverGoal ? "Over Goal" : "Remaining")
+                        : "Goal",
+                    value: goal > 0
+                        ? "${remaining.toInt()} kcal"
+                        : "Not set",
+                    color: goal <= 0
+                        ? Colors.grey
+                        : isOverGoal
+                            ? Colors.red
+                            : Colors.blue,
+                    isDark: isDark,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Primary action — Yes, I'm done
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  provider.markDayComplete();
+                  Navigator.pop(context);
+                  _loadServerPrediction();
+                },
+                icon: const Icon(Icons.check_circle_rounded, size: 20),
+                label: const Text(
+                  "Yes, I'm done eating",
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primary,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(double.infinity, 52),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            // Secondary action — Not yet (subtle)
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: () => Navigator.pop(context),
+                style: TextButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 48),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: Text(
+                  "Not yet, keep tracking",
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: isDark ? Colors.white54 : Colors.grey.shade600,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
+
 
   Widget _buildMetricsCard(BuildContext context, Map<String, dynamic> metrics, bool isDark) {
     final cardColor = isDark ? const Color(0xFF2C2C2C) : AppTheme.surface;
@@ -646,4 +779,45 @@ class _CaloriePredictionScreenState extends State<CaloriePredictionScreen> {
       ],
     );
   }
-}
+}
+
+// ── Helper widget for the "Done eating" bottom sheet ─────────────────────────
+class _StatChip extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+  final bool isDark;
+
+  const _StatChip({
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            color: isDark ? Colors.white54 : Colors.grey.shade500,
+          ),
+        ),
+      ],
+    );
+  }
+}
+

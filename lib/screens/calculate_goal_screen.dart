@@ -14,6 +14,7 @@
 // Accessed from: SetGoalScreen, SettingsScreen
 // =============================================================================
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'package:provider/provider.dart';
 import '../theme.dart';
@@ -98,14 +99,15 @@ class _CalculateGoalScreenState extends State<CalculateGoalScreen> {
       return;
     }
 
-    final val = double.tryParse(_manualCtrl.text);
+    final text = _manualCtrl.text.trim();
+    final val = double.tryParse(text);
     final minKcal = _getMin(_manualGender);
     final maxKcal = _getMax(_manualGender);
 
-    if (val == null || val <= 0) {
+    if (text.isEmpty || val == null || val <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please enter a valid number'),
+          content: Text('Please enter a valid calorie amount'),
           backgroundColor: Colors.red,
           duration: Duration(seconds: 2),
         ),
@@ -140,26 +142,31 @@ class _CalculateGoalScreenState extends State<CalculateGoalScreen> {
   }
 
   void _calculate() {
+    final ageVal = int.tryParse(_ageCtrl.text);
+    final weightVal = double.tryParse(_weightCtrl.text);
     setState(() {
       _genderError =
       _gender == null ? 'Please select gender' : null;
-      _ageError = (_ageCtrl.text.isEmpty ||
-          int.tryParse(_ageCtrl.text) == null)
-          ? 'Please enter valid age'
-          : null;
-      _weightError = (_weightCtrl.text.isEmpty ||
-          double.tryParse(_weightCtrl.text) == null ||
-          double.parse(_weightCtrl.text) <= 0)
-          ? 'Please enter a valid weight (must be greater than 0)'
-          : null;
+
+      if (_ageCtrl.text.isEmpty || ageVal == null) {
+        _ageError = 'Please enter a valid age';
+      } else if (ageVal < 1 || ageVal > 120) {
+        _ageError = 'Age must be between 1 and 120';
+      } else {
+        _ageError = null;
+      }
+
+      if (_weightCtrl.text.isEmpty || weightVal == null) {
+        _weightError = 'Please enter a valid weight';
+      } else if (weightVal < 10 || weightVal > 500) {
+        _weightError = 'Weight must be between 10 and 500 kg';
+      } else {
+        _weightError = null;
+      }
+
       _heightError =
       (_heightFeet == null || _heightInch == null)
           ? 'Please select height'
-          : null;
-      _ageError = (_ageCtrl.text.isEmpty ||
-          int.tryParse(_ageCtrl.text) == null ||
-          int.parse(_ageCtrl.text) <= 0)
-          ? 'Please enter a valid age (must be greater than 0)'
           : null;
     });
 
@@ -264,6 +271,10 @@ class _CalculateGoalScreenState extends State<CalculateGoalScreen> {
               controller: _manualCtrl,
               keyboardType: TextInputType.number,
               enabled: _manualGender != null,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(5),
+              ],
               decoration: InputDecoration(
                 labelText: 'Daily Calorie Goal (kcal)',
                 prefixIcon: const Icon(
@@ -468,23 +479,31 @@ class _CalculateGoalScreenState extends State<CalculateGoalScreen> {
                 child: TextField(
                   controller: _ageCtrl,
                   keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(3),
+                  ],
                   decoration: InputDecoration(
                       labelText: 'Age',
                       suffixText: 'yrs',
                       errorText: _ageError,
-                      hintText: 'e.g. 25'),
+                      hintText: '1–120'),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: TextField(
                   controller: _weightCtrl,
-                  keyboardType: TextInputType.number,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                    _DecimalRangeFormatter(max: 500),
+                  ],
                   decoration: InputDecoration(
                       labelText: 'Weight',
                       suffixText: 'kg',
                       errorText: _weightError,
-                      hintText: 'e.g. 65'),
+                      hintText: '10–500'),
                 ),
               ),
             ]),
@@ -615,5 +634,31 @@ class _LimitRow extends StatelessWidget {
             color: color, fontWeight: FontWeight.w500),
       ),
     ]);
+  }
+}
+
+// ── Custom formatter: prevents leading dot and values above max ───────────────
+class _DecimalRangeFormatter extends TextInputFormatter {
+  final double max;
+  const _DecimalRangeFormatter({required this.max});
+
+  @override
+  TextEditingValue formatEditUpdate(
+      TextEditingValue oldValue, TextEditingValue newValue) {
+    final text = newValue.text;
+
+    // Block leading dot (e.g. ".5")
+    if (text.startsWith('.')) return oldValue;
+
+    // Block more than one dot
+    if ('.'.allMatches(text).length > 1) return oldValue;
+
+    // Allow partial decimal (e.g. "65.") without blocking mid-type
+    if (text.endsWith('.')) return newValue;
+
+    final val = double.tryParse(text);
+    if (val != null && val > max) return oldValue;
+
+    return newValue;
   }
 }

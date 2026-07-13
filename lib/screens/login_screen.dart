@@ -172,6 +172,9 @@ class _LoginScreenState extends State<LoginScreen> {
               TextField(
                 controller: _passCtrl,
                 obscureText: _obscure,
+                autocorrect: false,
+                enableSuggestions: false,
+                keyboardType: TextInputType.visiblePassword,
                 decoration: InputDecoration(
                   hintText: '••••••••',
                   prefixIcon: const Icon(Icons.lock_outline),

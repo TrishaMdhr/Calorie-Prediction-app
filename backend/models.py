@@ -15,7 +15,7 @@ class User(Base):
     height_inch = Column(Integer)
     activity_level = Column(String(20))
     fitness_goal = Column(String(20))
-    daily_goal = Column(Float, default=2000)
+    daily_goal = Column(Float, default=0)
     goal_type = Column(String(20), default="manual")
 
 class FoodItem(Base):

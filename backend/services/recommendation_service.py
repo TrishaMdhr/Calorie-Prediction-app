@@ -1,4 +1,4 @@
-def calorie_recommendation(calories, is_daily=False, daily_goal=2200, gender='Male'):
+def calorie_recommendation(calories, is_daily=False, daily_goal=0, gender='Male'):
     """Rule-based calorie recommendations.
 
     Under-eating detection uses the commonly-cited minimum safe daily
@@ -8,6 +8,8 @@ def calorie_recommendation(calories, is_daily=False, daily_goal=2200, gender='Ma
     clinical standard, used only for early encouragement.
     """
     if is_daily:
+        if daily_goal <= 0:
+            return "Please set your daily calorie goal to receive personalized recommendations."
         min_safe = 1200 if gender == 'Female' else 1500
 
         if calories > daily_goal * 1.36:
@@ -31,7 +33,7 @@ def calorie_recommendation(calories, is_daily=False, daily_goal=2200, gender='Ma
     return "Low calorie item. Good choice for lighter meals."
 
 
-def build_recommendations(calories, is_daily=False, daily_goal=2200, gender='Male', alerts=None):
+def build_recommendations(calories, is_daily=False, daily_goal=0, gender='Male', alerts=None):
     """Rule-based recommendations with optional pattern-detected alerts."""
     recommendations = [{
         "source": "rule_based",

@@ -14,7 +14,6 @@ import 'package:provider/provider.dart';
 import '../theme.dart';
 import '../providers/app_provider.dart';
 import 'login_screen.dart';
-import 'forgot_password_screen.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -216,6 +215,9 @@ class _SignupScreenState extends State<SignupScreen> {
               TextField(
                 controller: _passCtrl,
                 obscureText: _obscure1,
+                autocorrect: false,
+                enableSuggestions: false,
+                keyboardType: TextInputType.visiblePassword,
                 decoration: InputDecoration(
                   hintText: '••••••••',
                   prefixIcon: const Icon(Icons.lock_outline),
@@ -241,6 +243,9 @@ class _SignupScreenState extends State<SignupScreen> {
               TextField(
                 controller: _confirmCtrl,
                 obscureText: _obscure2,
+                autocorrect: false,
+                enableSuggestions: false,
+                keyboardType: TextInputType.visiblePassword,
                 decoration: InputDecoration(
                   hintText: '••••••••',
                   prefixIcon: const Icon(Icons.lock_outline),
@@ -263,18 +268,6 @@ class _SignupScreenState extends State<SignupScreen> {
                   activeColor: AppTheme.primary,
                 ),
                 const Text('Remember me'),
-                const Spacer(),
-                TextButton(
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => const ForgotPasswordScreen()),
-                  ),
-                  child: Text('Forgot password?',
-                      style: TextStyle(
-                          color: AppTheme.primary,
-                          fontWeight: FontWeight.w600)),
-                ),
               ]),
               const SizedBox(height: 16),
               ElevatedButton(

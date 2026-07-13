@@ -206,7 +206,7 @@ class AppProvider extends ChangeNotifier {
           'name': name,
           'email': email,
           'password': password,
-          'daily_calorie_goal': user.calorieGoal > 0 ? user.calorieGoal : 2000,
+          'daily_calorie_goal': user.calorieGoal,
         }),
       ).timeout(const Duration(seconds: 10));
 
@@ -482,7 +482,6 @@ class AppProvider extends ChangeNotifier {
       if (resp.statusCode == 200) {
         final data = jsonDecode(resp.body);
         final List recs = data['recommendations'] ?? [];
-        serverRecommendations = recs.map((r) => r['message'] as String).toList();
 
         // Derive alerts from recommendations that look like warnings
         serverAlerts = recs
@@ -493,6 +492,17 @@ class AppProvider extends ChangeNotifier {
                      msg.contains('high calorie');
             })
             .map<Map<String, dynamic>>((r) => {'message': r['message']})
+            .toList();
+
+        // Filter recommendations (insights) to only contain non-warning messages
+        serverRecommendations = recs
+            .where((r) {
+              final msg = (r['message'] as String).toLowerCase();
+              return !(msg.contains('exceeded') ||
+                       msg.contains('below') ||
+                       msg.contains('high calorie'));
+            })
+            .map((r) => r['message'] as String)
             .toList();
 
         // Sync calorie goal from server if not set locally

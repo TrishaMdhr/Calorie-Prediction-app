@@ -526,7 +526,7 @@ class _HomeBody extends StatelessWidget {
                     backgroundColor:
                     AppTheme.primary.withAlpha(38),
                     child: Text(
-                      entry.value.mealType[0],
+                      entry.value.mealType.isNotEmpty ? entry.value.mealType[0] : '?',
                       style: TextStyle(
                           color: AppTheme.primary,
                           fontWeight: FontWeight.bold),
