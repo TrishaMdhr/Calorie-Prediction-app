@@ -308,3 +308,40 @@ def add_custom_food(db: Session, food_name, calories, protein, carbs, fat, fibre
     db.commit()
     db.refresh(food)
     return food
+
+# ---- ADMIN DASHBOARD ANALYTICS FUNCTIONS ----
+
+def get_users_created_since(db: Session, since_date):
+    return db.query(User.created_at).filter(User.created_at >= since_date).all()
+
+def get_food_logs_since(db: Session, since_date):
+    return db.query(FoodLog).filter(FoodLog.date >= since_date).all()
+
+def get_top_logged_foods(db: Session, limit=5):
+    from sqlalchemy import func
+    rows = (
+        db.query(FoodItem.food_name, func.count(FoodLog.log_id).label("times_logged"))
+        .join(FoodLog, FoodLog.food_id == FoodItem.food_id)
+        .group_by(FoodItem.food_name)
+        .order_by(func.count(FoodLog.log_id).desc())
+        .limit(limit)
+        .all()
+    )
+    return rows
+
+def get_active_session_count_since(db: Session, since_date):
+    return (
+        db.query(LoginSession.user_id)
+        .filter(LoginSession.last_activity >= since_date)
+        .distinct()
+        .count()
+    )
+
+def get_logs_count_and_calories_for_date(db: Session, target_date):
+    from sqlalchemy import func
+    result = (
+        db.query(func.count(FoodLog.log_id), func.coalesce(func.sum(FoodLog.calories_total), 0))
+        .filter(FoodLog.date == target_date)
+        .first()
+    )
+    return result[0] or 0, result[1] or 0
