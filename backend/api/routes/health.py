@@ -1,0 +1,53 @@
+from flask import Blueprint, jsonify
+
+from database import use_sqlite
+
+health_bp = Blueprint("health", __name__)
+
+
+def _ml_status():
+    try:
+        from services import ml_service
+
+        return ml_service.is_ml_available()
+    except ImportError:
+        return False
+
+
+@health_bp.route("/")
+def home():
+    return jsonify({
+        "status": "running",
+        "app": "Calorie Monitoring API",
+        "version": "2.0",
+        "database": "sqlite" if use_sqlite else "mysql",
+        "ml_available": _ml_status(),
+    })
+
+
+@health_bp.route("/api/endpoints")
+def list_endpoints():
+    return jsonify({
+        "auth": {
+            "POST /register": "Register a new user",
+            "POST /login": "Login and receive JWT token",
+        },
+        "food": {
+            "GET /search?q=": "Search food catalog",
+            "GET /food/<name>": "Get food nutrition details",
+            "POST /manual": "Add custom food entry (requires auth)",
+        },
+        "ml": {
+            "POST /predict": "Upload food image for CNN recognition + calories",
+            "GET /predict/future?day=": "Predict future daily calories (regression)",
+        },
+        "tracking": {
+            "POST /log": "Log food intake (requires auth)",
+            "GET /daily": "Today's calorie total (requires auth)",
+            "GET /weekly": "7-day summary (requires auth)",
+            "GET /history?days=30": "Calorie history (requires auth)",
+        },
+        "alerts": {
+            "GET /alerts?days=30": "Calorie spike & pattern alerts (requires auth)",
+        },
+    })

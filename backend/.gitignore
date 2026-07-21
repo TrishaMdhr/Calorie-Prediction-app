@@ -1,0 +1,14 @@
+.env
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# ML model weights (large files — copy in locally, do not commit)
+ml/artifacts/*.keras
+ml/artifacts/*.h5
+*.h5
+
+# Auto-generated SQLite database (re-created on first run)
+*.db
