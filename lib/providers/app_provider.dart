@@ -640,17 +640,14 @@ class AppProvider extends ChangeNotifier {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
-      return data;
-}
+        return data;
+      }
 
-  return {
-    'error': data['error'] ??
-      data['hint'] ??
-    'Server returned ${response.statusCode}'
-};
-
-      // Surface the real error from the server body
-      return {'error': data['error'] ?? data['hint'] ?? 'Server returned ${response.statusCode}'};
+      return {
+        'error': data['error'] ??
+            data['hint'] ??
+            'Server returned ${response.statusCode}'
+      };
     } on TimeoutException {
       return {'error': 'Request timed out (60 s). The server may still be loading the model — please retry.'};
     } catch (e) {

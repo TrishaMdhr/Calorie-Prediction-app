@@ -203,7 +203,11 @@ class _UsersScreenState extends State<UsersScreen> {
                                     );
                                   },
                                   leading: CircleAvatar(
-                                    child: Text(user["name"][0].toUpperCase()),
+                                    child: Text(
+                                      (user["name"]?.toString().isNotEmpty == true)
+                                          ? user["name"][0].toUpperCase()
+                                          : "?",
+                                    ),
                                   ),
                                   title: Text(user["name"]),
                                   subtitle: Column(
