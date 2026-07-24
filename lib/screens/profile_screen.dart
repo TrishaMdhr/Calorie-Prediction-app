@@ -51,17 +51,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final provider = Provider.of<AppProvider>(context);
     final user = provider.user;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('My Account',
-            style: TextStyle(
-                fontWeight: FontWeight.bold, fontSize: 22)),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            // ── Avatar ──────────────────────────────
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+      child: Column(
+        children: [
+          const SizedBox(height: 8),
+          // ── Avatar ──────────────────────────────
             Stack(
               children: [
                 CircleAvatar(
@@ -291,11 +286,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.danger),
             ),
-            const SizedBox(height: 80), // ← 40 bata 80 ma change gareko
+            const SizedBox(height: 80),
           ],
         ),
-      ),
-    );
+      );
   }
 
   void _confirmLogout(BuildContext context, AppProvider provider) {

@@ -239,9 +239,7 @@ class AppProvider extends ChangeNotifier {
         body: jsonEncode({'email': email, 'password': password}),
       ).timeout(const Duration(seconds: 10));
       
-      print("Status Code: ${resp.statusCode}");
-      print("Response Body: ${resp.body}");
-      
+
       Map<String, dynamic> data;
       try {
         data = jsonDecode(resp.body) as Map<String, dynamic>;

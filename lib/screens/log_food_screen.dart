@@ -66,7 +66,7 @@ class _LogFoodScreenState extends State<LogFoodScreen> {
                         letterSpacing: 1)),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
-                  value: _mealType,
+                   initialValue: _mealType,
                   decoration: const InputDecoration(),
                   items: _mealTypes
                       .map((m) =>
@@ -220,58 +220,72 @@ class _ScanPanelState extends State<_ScanPanel> {
   }
 
   Future<void> _pickAndScan(ImageSource source) async {
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(
-        source: source, imageQuality: 70, maxWidth: 800);
-    if (picked == null) return;
-
-    final bytes = await picked.readAsBytes();
-
-    setState(() {
-      _scanning = true;
-      _imageBytes = bytes;
-      _result = null;
-      _errorMsg = null;
-      _isFromDataset = false;
-    });
-
-    // Cache provider before await
+    // Cache provider before any async gap
     final provider = Provider.of<AppProvider>(context, listen: false);
-    final data = await provider.predictFoodFromImage(bytes);
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(
+          source: source, imageQuality: 70, maxWidth: 800);
+      if (picked == null) return;
 
-    if (!mounted) return;
+      final bytes = await picked.readAsBytes();
 
-    if (data != null && !data.containsKey('error')) {
-      final foodName  = data['food'] as String;
-      final calories  = (data['calories'] as num).toInt();
-      final confidence = (data['confidence'] as num).toDouble();
-      final protein   = (data['protein'] as num?)?.toDouble() ?? 0;
-      final carbs     = (data['carbs'] as num?)?.toDouble() ?? 0;
-      final fat       = (data['fat'] as num?)?.toDouble() ?? 0;
-
-      // Enrich macros from local dataset if available
-      final match = _datasetService.findMatch(foodName);
-
-      final result = {
-        'name':            foodName,
-        'calories':        calories,
-        'protein':         match?.protein.round() ?? protein.round(),
-        'carbs':           match?.carbs.round() ?? carbs.round(),
-        'fat':             match?.fat.round() ?? fat.round(),
-        'confidence':      confidence,
-        'confidence_tier': data['confidence_tier'] ?? 'low',
-      };
       setState(() {
-        _result = result;
-        _isFromDataset = match != null;
+        _scanning = true;
+        _imageBytes = bytes;
+        _result = null;
+        _errorMsg = null;
+        _isFromDataset = false;
+      });
+
+      final data = await provider.predictFoodFromImage(bytes);
+
+      if (!mounted) return;
+
+      if (data != null && !data.containsKey('error')) {
+        final foodName  = data['food'] as String;
+        final calories  = (data['calories'] as num).toInt();
+        final confidence = (data['confidence'] as num).toDouble();
+        final protein   = (data['protein'] as num?)?.toDouble() ?? 0;
+        final carbs     = (data['carbs'] as num?)?.toDouble() ?? 0;
+        final fat       = (data['fat'] as num?)?.toDouble() ?? 0;
+
+        // Enrich macros from local dataset if available
+        final match = _datasetService.findMatch(foodName);
+
+        final result = {
+          'name':            foodName,
+          'calories':        calories,
+          'protein':         match?.protein.round() ?? protein.round(),
+          'carbs':           match?.carbs.round() ?? carbs.round(),
+          'fat':             match?.fat.round() ?? fat.round(),
+          'confidence':      confidence,
+          'confidence_tier': data['confidence_tier'] ?? 'low',
+        };
+        setState(() {
+          _result = result;
+          _isFromDataset = match != null;
+          _scanning = false;
+        });
+        _populateEditors(result);
+      } else {
+        setState(() {
+          _errorMsg = data?['error'] ?? 'Could not recognize this food. Please add it manually.';
+          _scanning = false;
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMsg = 'Error accessing camera/gallery: $e';
         _scanning = false;
       });
-      _populateEditors(result);
-    } else {
-      setState(() {
-        _errorMsg = data?['error'] ?? 'Could not recognize this food. Please add it manually.';
-        _scanning = false;
-      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to access camera/gallery: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 

@@ -132,6 +132,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ];
 
     return Scaffold(
+      appBar: _currentIndex == 2
+          ? AppBar(
+              title: const Text('Settings',
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 22)),
+              backgroundColor: Colors.white,
+              foregroundColor: Colors.black,
+              elevation: 0,
+            )
+          : _currentIndex == 3
+              ? AppBar(
+                  title: const Text('My Account',
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 22)),
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.black,
+                  elevation: 0,
+                )
+              : null,
       body: pages[_currentIndex],
       floatingActionButton: _currentIndex == 0
           ? FloatingActionButton(

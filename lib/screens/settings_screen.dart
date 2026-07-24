@@ -57,14 +57,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final provider = Provider.of<AppProvider>(context);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings',
-            style: TextStyle(
-                fontWeight: FontWeight.bold, fontSize: 22)),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         children: [
           // ── SERVER CONNECTION ────────────────────────
           _SectionTitle('SERVER CONNECTION'),
@@ -199,7 +193,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     color: AppTheme.primary),
                 value: provider.notificationsEnabled,
                 onChanged: provider.toggleNotifications,
-                activeColor: AppTheme.primary,
+                activeThumbColor: AppTheme.primary,
               ),
             ],
           ),
@@ -329,8 +323,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 40),
         ],
-      ),
-    );
+      );
   }
 }
 
