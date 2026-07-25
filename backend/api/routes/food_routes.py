@@ -44,7 +44,14 @@ def search():
 
     foods = food_service.search_foods(query)
     results = [
-        {"food_id": f["food_id"], "food_name": f["food_name"], "calories": f["calories"]}
+        {
+            "food_id": f["food_id"],
+            "food_name": f["food_name"],
+            "calories": f["calories"],
+            "protein": f["protein"],
+            "carbs": f["carbs"],
+            "fat": f["fat"],
+        }
         for f in foods
     ]
     return jsonify({"results": results, "count": len(results)}), 200

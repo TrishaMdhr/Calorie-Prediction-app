@@ -4,11 +4,12 @@
 // -----------------------------------------------------------------------------
 // TAB 0 — SCAN FOOD (_ScanPanel):
 //   · Picks image from camera/gallery
-//   · Sends to POST http://10.0.2.2:5000/predict (CNN food recognition)
+//   · Sends to POST /predict (CNN food recognition)
 //   · _saveToLog() → AppProvider.addFoodLog() → syncs to backend
 //
 // TAB 1 — ENTER MANUALLY (_ManualPanel):
 //   · User types food name, calories, protein, carbs, fat
+//   · Food name field has live autocomplete via FoodSearchService (GET /search)
 //   · _saveToLog() → AppProvider.addFoodLog() → syncs to backend
 //   · Bookmark icon → AppProvider.saveToMacros() (saves for reuse)
 //
@@ -28,6 +29,7 @@ import '../theme.dart';
 import '../providers/app_provider.dart';
 import '../models/food_log_model.dart';
 import '../services/food_dataset_service.dart';
+import '../services/food_search_service.dart';
 
 class LogFoodScreen extends StatefulWidget {
   const LogFoodScreen({super.key});
@@ -172,7 +174,7 @@ class _OptionButton extends StatelessWidget {
   }
 }
 
-// ── CNN Food Scanner ─────────────────────────────────────
+// ── CNN Food Scanner ──────────────────────────────────────────────
 class _ScanPanel extends StatefulWidget {
   final String mealType;
   const _ScanPanel({required this.mealType});
@@ -419,7 +421,7 @@ class _ScanPanelState extends State<_ScanPanel> {
             ),
             const SizedBox(height: 14),
 
-            // ── Editable result fields ─────────────────
+            // ── Editable result fields ──────────────
             const Text('FOOD DETAILS — tap any field to correct',
                 style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold, letterSpacing: 0.8)),
             const SizedBox(height: 10),
@@ -595,7 +597,7 @@ class _ScanPanelState extends State<_ScanPanel> {
   }
 }
 
-// ── Manual Panel ─────────────────────────────────────────
+// ── Manual Panel ──────────────────────────────────────────────────
 class _ManualPanel extends StatefulWidget {
   final String mealType;
   const _ManualPanel({required this.mealType});
@@ -752,6 +754,7 @@ class _ManualPanelState extends State<_ManualPanel> {
                 canRemove: _items.length > 1,
                 onRemove: () => _removeItem(index),
                 macroWarning: warning,
+                onFieldChanged: _onFieldChanged,
                 onSaveToMacros: () {
                   if (!_formKey.currentState!.validate()) return;
                   final name = item.nameCtrl.text.trim();
@@ -804,6 +807,7 @@ class _FoodItem {
   final proteinCtrl = TextEditingController();
   final carbsCtrl = TextEditingController();
   final fatCtrl = TextEditingController();
+  bool isFromDatabase = false;
 
   void dispose() {
     nameCtrl.dispose();
@@ -814,12 +818,13 @@ class _FoodItem {
   }
 }
 
-class _FoodItemForm extends StatelessWidget {
+class _FoodItemForm extends StatefulWidget {
   final _FoodItem item;
   final int index;
   final bool canRemove;
   final VoidCallback onRemove;
   final VoidCallback onSaveToMacros;
+  final VoidCallback onFieldChanged;
   final String? macroWarning;
 
   const _FoodItemForm({
@@ -828,11 +833,73 @@ class _FoodItemForm extends StatelessWidget {
     required this.canRemove,
     required this.onRemove,
     required this.onSaveToMacros,
+    required this.onFieldChanged,
     this.macroWarning,
   });
 
   @override
+  State<_FoodItemForm> createState() => _FoodItemFormState();
+}
+
+class _FoodItemFormState extends State<_FoodItemForm> {
+  final _searchService = FoodSearchService();
+  Timer? _debounce;
+  List<SearchedFood> _results = [];
+  bool _searching = false;
+  bool _showDropdown = false;
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _onNameChanged(String value) {
+    _debounce?.cancel();
+    widget.item.isFromDatabase = false;
+
+    if (value.trim().length < 2) {
+      setState(() {
+        _results = [];
+        _showDropdown = false;
+      });
+      return;
+    }
+
+    _debounce = Timer(const Duration(milliseconds: 350), () async {
+      setState(() => _searching = true);
+      final results = await _searchService.search(value);
+      if (!mounted) return;
+      setState(() {
+        _results = results;
+        _searching = false;
+        _showDropdown = results.isNotEmpty;
+      });
+    });
+  }
+
+  void _selectFood(SearchedFood food) {
+    setState(() {
+      widget.item.nameCtrl.text = food.name;
+      widget.item.calCtrl.text = food.calories.round().toString();
+      widget.item.proteinCtrl.text = food.protein.round().toString();
+      widget.item.carbsCtrl.text = food.carbs.round().toString();
+      widget.item.fatCtrl.text = food.fat.round().toString();
+      widget.item.isFromDatabase = true;
+      _showDropdown = false;
+      _results = [];
+    });
+    widget.onFieldChanged();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final item = widget.item;
+    final canRemove = widget.canRemove;
+    final onRemove = widget.onRemove;
+    final onSaveToMacros = widget.onSaveToMacros;
+    final macroWarning = widget.macroWarning;
+
     final numFormatter = FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'));
 
     return Container(
@@ -856,18 +923,76 @@ class _FoodItemForm extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: TextFormField(
-                  controller: item.nameCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Food Item',
-                    isDense: true,
-                    hintText: 'e.g. Rice, Chicken',
-                  ),
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) return 'Name required';
-                    if (v.trim().length < 2) return 'At least 2 characters';
-                    return null;
-                  },
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextFormField(
+                      controller: item.nameCtrl,
+                      onChanged: _onNameChanged,
+                      decoration: InputDecoration(
+                        labelText: 'Food Item',
+                        isDense: true,
+                        hintText: 'e.g. Rice, Chicken',
+                        suffixIcon: _searching
+                            ? const Padding(
+                                padding: EdgeInsets.all(10),
+                                child: SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2),
+                                ),
+                              )
+                            : null,
+                      ),
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) {
+                          return 'Name required';
+                        }
+                        if (v.trim().length < 2) {
+                          return 'At least 2 characters';
+                        }
+                        return null;
+                      },
+                    ),
+                    if (_showDropdown)
+                      Container(
+                        margin: const EdgeInsets.only(top: 4),
+                        constraints: const BoxConstraints(maxHeight: 200),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.grey.shade300),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.grey.shade200,
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: ListView.builder(
+                          shrinkWrap: true,
+                          padding: EdgeInsets.zero,
+                          itemCount: _results.length,
+                          itemBuilder: (context, i) {
+                            final food = _results[i];
+                            return ListTile(
+                              dense: true,
+                              title: Text(food.name),
+                              subtitle: Text(
+                                '${food.calories.round()} kcal | '
+                                'P:${food.protein.round()} '
+                                'C:${food.carbs.round()} '
+                                'F:${food.fat.round()}',
+                                style: const TextStyle(fontSize: 11),
+                              ),
+                              onTap: () => _selectFood(food),
+                            );
+                          },
+                        ),
+                      ),
+                  ],
                 ),
               ),
               IconButton(
@@ -882,6 +1007,24 @@ class _FoodItemForm extends StatelessWidget {
                 ),
             ],
           ),
+          if (item.isFromDatabase) ...[
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: Colors.blue.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Text(
+                'Macros from food database',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.blue,
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           Row(
             children: [
@@ -980,7 +1123,7 @@ class _FoodItemForm extends StatelessWidget {
                 border: Border.all(color: Colors.orange.shade200),
               ),
               child: Text(
-                macroWarning!,
+                macroWarning,
                 style: TextStyle(color: Colors.orange.shade800, fontSize: 11),
               ),
             ),
@@ -991,7 +1134,7 @@ class _FoodItemForm extends StatelessWidget {
   }
 }
 
-// ── Saved Macros Panel ────────────────────────────────────
+// ── Saved Macros Panel ────────────────────────────────────────────
 class _SavedMacrosPanel extends StatelessWidget {
   final String mealType;
   const _SavedMacrosPanel({required this.mealType});
