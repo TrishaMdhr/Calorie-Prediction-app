@@ -45,18 +45,15 @@ def predict_from_image(file_storage):
 
     try:
         file_storage.save(temp_path)
-        result = predict_food(temp_path)
+        # predict_food() raises ValueError on unreadable images (Bug #1 fix).
+        # ValueError propagates to the route which returns HTTP 400.
+        food_name, confidence = predict_food(temp_path)
     finally:
         if os.path.exists(temp_path):
             try:
                 os.remove(temp_path)
             except OSError:
                 pass
-
-    if result == "Image not found":
-        raise ValueError("Could not process image")
-
-    food_name, confidence = result
     details = get_food_details(food_name)
     clean_name = food_name.replace("_", " ").title()
 
@@ -71,9 +68,55 @@ def predict_from_image(file_storage):
     }
 
 
+def _hf_classify(image_bytes):
+    """Send image bytes to the Hugging Face Inference API (nateraw/food, Food-101).
+
+    Returns (food_name, confidence_percent) on success, or raises RuntimeError
+    so the caller can fall back gracefully.
+
+    Requires HF_API_TOKEN in the environment (free token from huggingface.co).
+    Model page: https://huggingface.co/nateraw/food
+    """
+    import json
+    import os
+    import urllib.request
+
+    token = os.environ.get("HF_API_TOKEN", "").strip()
+    if not token:
+        raise RuntimeError("HF_API_TOKEN not set")
+
+    api_url = "https://api-inference.huggingface.co/models/nateraw/food"
+    req = urllib.request.Request(
+        api_url,
+        data=image_bytes,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/octet-stream",
+        },
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=15) as resp:
+        results = json.loads(resp.read())
+
+    # Response is a list of {"label": "pizza", "score": 0.98} sorted by score desc
+    if not results or not isinstance(results, list):
+        raise RuntimeError(f"Unexpected HF API response: {results}")
+
+    top = results[0]
+    # HF returns labels like "pizza" or "hot dog" — normalise to snake_case
+    food_name = top["label"].strip().lower().replace(" ", "_")
+    confidence = round(float(top["score"]) * 100, 2)
+    return food_name, confidence
+
+
 def predict_fallback_image(file_storage):
     """Fallback food recognition when CNN model weights (.keras / .h5) are missing.
-    Uses image byte hashing to select a food class from class_names.json deterministically.
+
+    Strategy (in order):
+      1. Hugging Face Inference API  — nateraw/food (Food-101, 101 classes).
+         Requires HF_API_TOKEN env var (free at huggingface.co/settings/tokens).
+      2. Deterministic hash pick     — MD5 of image bytes → class index.
+         Used when token is absent or the API call fails.
     """
     import hashlib
     import json
@@ -94,9 +137,22 @@ def predict_fallback_image(file_storage):
     else:
         classes = ["pizza", "hamburger", "caesar_salad", "sushi", "chicken_curry"]
 
-    img_hash = int(hashlib.md5(data).hexdigest(), 16)
-    idx = img_hash % len(classes)
-    food_name = classes[idx]
+    # --- Strategy 1: Hugging Face API ---
+    used_api = False
+    try:
+        food_name, confidence = _hf_classify(data)
+        # Map to nearest known class if exact match not found
+        if food_name not in classes:
+            # Try partial match (e.g. "hot_dog" → "hot_dog")
+            match = next((c for c in classes if food_name in c or c in food_name), None)
+            food_name = match if match else food_name
+        used_api = True
+    except Exception as exc:
+        print(f"[fallback] HF API unavailable ({exc}), using hash-pick.")
+        # --- Strategy 2: Hash-based pick ---
+        img_hash = int(hashlib.md5(data).hexdigest(), 16)
+        food_name = classes[img_hash % len(classes)]
+        confidence = 75.0
 
     details = get_food_details(food_name)
     clean_name = food_name.replace("_", " ").title()
@@ -108,8 +164,8 @@ def predict_fallback_image(file_storage):
         "protein":  details.get("protein", 0),
         "carbs":    details.get("carbs", 0),
         "fat":      details.get("fat", 0),
-        "confidence": 75.0,
-        "is_fallback": True,
+        "confidence": confidence,
+        "is_fallback": not used_api,
     }
 
 

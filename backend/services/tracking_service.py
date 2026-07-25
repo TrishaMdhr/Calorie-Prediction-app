@@ -16,13 +16,22 @@ import crud
 def _log_to_dict(log):
     if not log:
         return None
+    # Normalize date to always be a datetime.date object.
+    # SQLite can return date columns as ISO strings; comparing them with `>=`
+    # against a datetime.date in get_daily_history() raises TypeError.
+    raw_date = log.date
+    if isinstance(raw_date, str):
+        try:
+            raw_date = date.fromisoformat(raw_date)
+        except ValueError:
+            raw_date = date.today()
     return {
         "log_id": log.log_id,
         "user_id": log.user_id,
         "food_id": log.food_id,
         "quantity": log.quantity,
         "calories_total": log.calories_total,
-        "date": log.date,
+        "date": raw_date,
         "meal_type": log.meal_type or "Lunch",
         "protein": log.protein if hasattr(log, "protein") else 0.0,
         "carbs": log.carbs if hasattr(log, "carbs") else 0.0,

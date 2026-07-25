@@ -42,19 +42,21 @@ def update_user_profile(db: Session, user_id, gender=None, age=None, weight=None
     user = get_user_by_id(db, user_id)
     if not user:
         return None
-    if gender:
+    # Use `is not None` (not bare truthiness) so callers can explicitly set
+    # falsy-but-valid values: age=0 (unset), weight=0.0, gender="" (cleared), etc.
+    if gender is not None:
         user.gender = gender
-    if age:
+    if age is not None:
         user.age = age
-    if weight:
+    if weight is not None:
         user.weight = weight
     if height_feet is not None:
         user.height_feet = height_feet
     if height_inch is not None:
         user.height_inch = height_inch
-    if activity_level:
+    if activity_level is not None:
         user.activity_level = activity_level
-    if fitness_goal:
+    if fitness_goal is not None:
         user.fitness_goal = fitness_goal
     db.commit()
     db.refresh(user)

@@ -2,9 +2,24 @@
 Train the Food-101 CNN model. Run only when you need to rebuild food_model.keras.
 
 Set dataset paths before running:
-  $env:FOOD101_TRAIN_DIR = "C:\path\to\food-101\train"
-  $env:FOOD101_VAL_DIR = "C:\path\to\food-101\validation"
+  $env:FOOD101_TRAIN_DIR = "C:\\path\\to\\food-101\\train"
+  $env:FOOD101_VAL_DIR   = "C:\\path\\to\\food-101\\validation"
   python ml/training/train_cnn.py
+
+Expected accuracy with these settings: ~75-85% val accuracy on Food-101.
+Previous script achieved ~45% due to the 5 issues fixed below.
+
+Fixes applied vs old script
+────────────────────────────
+1. IMAGE SIZE   : 128x128 -> 224x224  (pretrained backbones were designed for >=224)
+2. BACKBONE     : MobileNetV2 -> EfficientNetV2S  (much stronger feature extractor)
+3. PREPROCESSING: removed Rescaling(1/255) layer — EfficientNetV2S handles pixel
+                  normalisation internally via include_preprocessing=True, so adding
+                  a manual Rescaling caused double-scaling at inference (the foie_gras bug).
+4. AUGMENTATION : added RandomFlip, RandomRotation, RandomZoom, RandomContrast —
+                  critical for Food-101 which has high intra-class visual variance.
+5. FINE-TUNING  : unfreezes last 60 layers (was 30) and uses ReduceLROnPlateau so
+                  LR decays automatically instead of being fixed at 1e-5.
 """
 
 import json
@@ -13,81 +28,135 @@ import sys
 
 import tensorflow as tf
 from tensorflow.keras import layers, models
-from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 
-TRAINING_DIR = os.path.dirname(os.path.abspath(__file__))
-ML_ROOT = os.path.dirname(TRAINING_DIR)
+TRAINING_DIR  = os.path.dirname(os.path.abspath(__file__))
+ML_ROOT       = os.path.dirname(TRAINING_DIR)
 ARTIFACTS_DIR = os.path.join(ML_ROOT, "artifacts")
 
 train_dir = os.getenv("FOOD101_TRAIN_DIR", "")
-val_dir = os.getenv("FOOD101_VAL_DIR", "")
+val_dir   = os.getenv("FOOD101_VAL_DIR", "")
 
 if not train_dir or not val_dir:
-    print("Set FOOD101_TRAIN_DIR and FOOD101_VAL_DIR environment variables.")
+    print("ERROR: Set FOOD101_TRAIN_DIR and FOOD101_VAL_DIR environment variables.")
     sys.exit(1)
 
-img_size = (128, 128)
-batch_size = 32
+# ── Hyper-parameters ──────────────────────────────────────────────────────────
+IMG_SIZE   = (224, 224)   # Fix #1: native resolution for pretrained backbones
+BATCH_SIZE = 32
 
+# ── Load datasets ─────────────────────────────────────────────────────────────
 train_data = tf.keras.preprocessing.image_dataset_from_directory(
     train_dir,
-    image_size=img_size,
-    batch_size=batch_size,
+    image_size=IMG_SIZE,
+    batch_size=BATCH_SIZE,
+    label_mode="int",
+    shuffle=True,
+    seed=42,
 )
 val_data = tf.keras.preprocessing.image_dataset_from_directory(
     val_dir,
-    image_size=img_size,
-    batch_size=batch_size,
+    image_size=IMG_SIZE,
+    batch_size=BATCH_SIZE,
+    label_mode="int",
+    shuffle=False,
 )
 
 class_names = train_data.class_names
-os.makedirs(ARTIFACTS_DIR, exist_ok=True)
+num_classes  = len(class_names)
+print(f"Found {num_classes} food classes.")
 
+os.makedirs(ARTIFACTS_DIR, exist_ok=True)
 with open(os.path.join(ARTIFACTS_DIR, "class_names.json"), "w") as f:
     json.dump(class_names, f)
 
-autotune = tf.data.AUTOTUNE
-train_data = train_data.prefetch(buffer_size=autotune)
-val_data = val_data.prefetch(buffer_size=autotune)
+# ── Fix #4: Data augmentation ─────────────────────────────────────────────────
+augmentation = models.Sequential([
+    layers.RandomFlip("horizontal"),
+    layers.RandomRotation(0.15),
+    layers.RandomZoom(0.15),
+    layers.RandomContrast(0.15),
+], name="augmentation")
 
-base_model = tf.keras.applications.MobileNetV2(
-    input_shape=(128, 128, 3),
+autotune   = tf.data.AUTOTUNE
+train_data = train_data.map(
+    lambda x, y: (augmentation(x, training=True), y),
+    num_parallel_calls=autotune,
+).prefetch(autotune)
+val_data = val_data.prefetch(autotune)
+
+# ── Fix #2 & #3: EfficientNetV2S backbone with built-in preprocessing ─────────
+# include_preprocessing=True means pixels should be raw [0, 255] float32.
+# Do NOT add a Rescaling layer — that would double-normalise and break inference.
+base_model = tf.keras.applications.EfficientNetV2S(
+    input_shape=(*IMG_SIZE, 3),
     include_top=False,
     weights="imagenet",
+    include_preprocessing=True,
 )
 base_model.trainable = False
 
-model = models.Sequential([
-    layers.Rescaling(1.0 / 255),
-    base_model,
-    layers.GlobalAveragePooling2D(),
-    layers.Dense(128, activation="relu"),
-    layers.Dropout(0.3),
-    layers.Dense(len(class_names), activation="softmax"),
-])
+inputs  = tf.keras.Input(shape=(*IMG_SIZE, 3))
+x       = base_model(inputs, training=False)
+x       = layers.GlobalAveragePooling2D()(x)
+x       = layers.BatchNormalization()(x)
+x       = layers.Dense(256, activation="relu")(x)
+x       = layers.Dropout(0.4)(x)
+outputs = layers.Dense(num_classes, activation="softmax")(x)
 
+model = tf.keras.Model(inputs, outputs)
+
+# ── Phase 1: Train head only ──────────────────────────────────────────────────
 model.compile(
-    optimizer="adam",
+    optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),
     loss="sparse_categorical_crossentropy",
     metrics=["accuracy"],
 )
 
-early_stop = EarlyStopping(monitor="val_loss", patience=5, restore_best_weights=True)
+callbacks_phase1 = [
+    EarlyStopping(monitor="val_accuracy", patience=5, restore_best_weights=True, mode="max"),
+    ReduceLROnPlateau(monitor="val_loss", factor=0.5, patience=3, min_lr=1e-6, verbose=1),
+    ModelCheckpoint(
+        os.path.join(ARTIFACTS_DIR, "food_model_phase1.keras"),
+        monitor="val_accuracy", save_best_only=True, mode="max", verbose=1,
+    ),
+]
 
-model.fit(train_data, validation_data=val_data, epochs=10, callbacks=[early_stop])
+print("\n=== Phase 1: Training classification head (backbone frozen) ===")
+model.fit(
+    train_data,
+    validation_data=val_data,
+    epochs=15,
+    callbacks=callbacks_phase1,
+)
 
+# ── Fix #5: Phase 2 — fine-tune last 60 layers (was 30) ──────────────────────
 base_model.trainable = True
-for layer in base_model.layers[:-30]:
+for layer in base_model.layers[:-60]:
     layer.trainable = False
 
 model.compile(
-    optimizer=tf.keras.optimizers.Adam(learning_rate=1e-5),
+    optimizer=tf.keras.optimizers.Adam(learning_rate=5e-5),
     loss="sparse_categorical_crossentropy",
     metrics=["accuracy"],
 )
 
-model.fit(train_data, validation_data=val_data, epochs=10, callbacks=[early_stop])
+callbacks_phase2 = [
+    EarlyStopping(monitor="val_accuracy", patience=7, restore_best_weights=True, mode="max"),
+    ReduceLROnPlateau(monitor="val_loss", factor=0.3, patience=3, min_lr=1e-7, verbose=1),
+    ModelCheckpoint(
+        os.path.join(ARTIFACTS_DIR, "food_model.keras"),
+        monitor="val_accuracy", save_best_only=True, mode="max", verbose=1,
+    ),
+]
 
-model_path = os.path.join(ARTIFACTS_DIR, "food_model.keras")
-model.save(model_path)
-print(f"Model saved to {model_path}")
+print("\n=== Phase 2: Fine-tuning top 60 layers of EfficientNetV2S ===")
+model.fit(
+    train_data,
+    validation_data=val_data,
+    epochs=20,
+    callbacks=callbacks_phase2,
+)
+
+print(f"\nDone! Best model saved to: {os.path.join(ARTIFACTS_DIR, 'food_model.keras')}")
+print("Class names saved to:", os.path.join(ARTIFACTS_DIR, "class_names.json"))

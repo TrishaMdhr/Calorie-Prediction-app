@@ -42,8 +42,12 @@ def predict_food_image():
         return jsonify({"error": f"Prediction failed: {exc}"}), 500
 
     # Confidence tier: high ≥ 70%, medium 50–70%, low 30–50%
+    # If the CNN model was unavailable the fallback used a hash-based guess —
+    # override the tier so users are not misled by its hardcoded 75% confidence.
     conf = prediction["confidence"]
-    if conf >= 70:
+    if prediction.get("is_fallback"):
+        confidence_tier = "fallback"
+    elif conf >= 70:
         confidence_tier = "high"
     elif conf >= 50:
         confidence_tier = "medium"
