@@ -24,14 +24,6 @@ predict_bp = Blueprint("predict", __name__)
 
 @predict_bp.route("/predict", methods=["POST"])
 def predict_food_image():
-    if not ml_service.is_ml_available():
-        return jsonify({
-            "error": "CNN model not loaded",
-            "hint": "Place food_model.keras or food_model.h5 in backend/ml/artifacts/. "
-                    "Server is still starting up — please retry in 30 seconds.",
-            "model_available": False,
-        }), 503
-
     if "image" not in request.files:
         return jsonify({"error": "No image provided. Send the image as multipart/form-data with field name 'image'"}), 400
 
@@ -40,7 +32,10 @@ def predict_food_image():
         return jsonify({"error": "Empty image upload — filename is missing"}), 400
 
     try:
-        prediction = ml_service.predict_from_image(file)
+        if ml_service.is_ml_available():
+            prediction = ml_service.predict_from_image(file)
+        else:
+            prediction = ml_service.predict_fallback_image(file)
     except ValueError as exc:
         return jsonify({"error": f"Could not process image: {exc}"}), 400
     except Exception as exc:
