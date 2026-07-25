@@ -104,7 +104,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Later'),
+            child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () {
@@ -266,7 +266,18 @@ class _HomeBody extends StatelessWidget {
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(
-                  builder: (_) => const SettingsScreen()),
+                builder: (_) => Scaffold(
+                  appBar: AppBar(
+                    title: const Text('Settings',
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 22)),
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.black,
+                    elevation: 0,
+                  ),
+                  body: const SettingsScreen(),
+                ),
+              ),
             ),
           ),
         ],
