@@ -46,7 +46,7 @@ def _load_model():
             print(f"Loading CNN model from: {model_path}")
             _model = tf.keras.models.load_model(model_path)
             # Warmup: raw float32 in [0, 255] — EfficientNetV2S normalises internally
-            _model.predict(np.zeros((1, 224, 224, 3), dtype="float32"), verbose=0)
+            _model.predict(np.zeros((1, 128, 128, 3), dtype="float32"), verbose=0)
             with open(CLASS_NAMES_PATH, "r") as f:
                 _classes = json.load(f)
             print(f"Model loaded & warmed up. {len(_classes)} food classes available.")
@@ -60,7 +60,7 @@ def predict_food(image_path):
 
     model, classes = _load_model()
 
-    img = cv2.resize(img, (224, 224))   # must match training IMG_SIZE
+    img = cv2.resize(img, (128, 128))   
     # OpenCV loads images in BGR order; EfficientNetV2S was trained on RGB.
     # Without this conversion the colour channels are swapped and predictions
     # are systematically wrong (e.g. confidently misidentifying every food).

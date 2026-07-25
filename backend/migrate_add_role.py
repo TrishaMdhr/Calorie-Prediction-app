@@ -51,8 +51,12 @@ _add_column_if_missing("users", "role", "VARCHAR(20) DEFAULT 'user'", "VARCHAR(2
 _add_column_if_missing("users", "created_at", "DATETIME", "DATETIME NULL")
 # 4. food_logs.logged_at
 _add_column_if_missing("food_logs", "logged_at", "DATETIME", "DATETIME NULL")
+# 5. food_logs.protein / carbs / fat — required by models.py FoodLog, missing from original migration
+_add_column_if_missing("food_logs", "protein", "REAL DEFAULT 0", "FLOAT DEFAULT 0")
+_add_column_if_missing("food_logs", "carbs", "REAL DEFAULT 0", "FLOAT DEFAULT 0")
+_add_column_if_missing("food_logs", "fat", "REAL DEFAULT 0", "FLOAT DEFAULT 0")
 
-# 5. Backfill NULLs so existing rows don't break admin screens
+# 6. Backfill NULLs so existing rows don't break admin screens
 with SessionLocal() as db:
     now = datetime.utcnow()
     db.query(User).filter(User.role.is_(None)).update({User.role: "user"})
@@ -61,7 +65,7 @@ with SessionLocal() as db:
     db.commit()
     print("Backfilled NULL values on existing rows.")
 
-# 6. Optionally promote a user to admin
+# 7. Optionally promote a user to admin
 if len(sys.argv) > 1:
     email = sys.argv[1].strip().lower()
     with SessionLocal() as db:

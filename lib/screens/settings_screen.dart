@@ -152,14 +152,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        OutlinedButton(
-                          onPressed: _resetUrl,
-                          style: OutlinedButton.styleFrom(
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10)),
+                         const SizedBox(width: 8),
+                        IntrinsicWidth(
+                          child: OutlinedButton(
+                            onPressed: _resetUrl,
+                            style: OutlinedButton.styleFrom(
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10)),
+                            ),
+                            child: const Text('Reset'),
                           ),
-                          child: const Text('Reset'),
                         ),
                       ],
                     ),
