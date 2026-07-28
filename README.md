@@ -132,7 +132,7 @@ python -m venv venv
 pip install -r requirements.txt
 ```
 
-> **CNN Model (optional):** Place `food_model.keras` and `class_names.json` inside `backend/ml/artifacts/` to enable photo-based food recognition. The app works without it — manual logging and ML regression still function fully.
+> **CNN Model (optional):** Place `food_model.keras` and `class_names.json` inside `backend/ml/artifacts/` (download from https://drive.google.com/drive/folders/1LK0DkNvqKQX6CD7d5L3qeIMWf61VjUvp) to enable photo-based food recognition. The app works without it — manual logging and ML regression still function fully.
 
 ### Flutter App Setup
 
