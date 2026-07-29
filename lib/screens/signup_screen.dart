@@ -53,7 +53,7 @@ class _SignupScreenState extends State<SignupScreen> {
       if (name.isEmpty) {
         _nameError = 'Full name is required';
       } else if (name.length < 2) {
-        _nameError = 'Name must be at least 2 characters';
+        _nameError = 'Name must be at least 3 characters';
       } else {
         _nameError = null;
       }
@@ -130,7 +130,6 @@ class _SignupScreenState extends State<SignupScreen> {
     }
   }
 
-
   @override
   void dispose() {
     _nameCtrl.dispose();
@@ -146,22 +145,18 @@ class _SignupScreenState extends State<SignupScreen> {
       backgroundColor: Colors.white,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(
-              horizontal: 28, vertical: 20),
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               const SizedBox(height: 10),
               const Text('Welcome',
-                  style: TextStyle(
-                      fontSize: 18, color: Colors.black54)),
+                  style: TextStyle(fontSize: 18, color: Colors.black54)),
               const SizedBox(height: 8),
               const CalowrieLogo(fontSize: 32),
               const SizedBox(height: 16),
               const Text('Sign Up',
-                  style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold)),
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
               const Text(
                 'Begin your personalized wellness experience',
@@ -172,15 +167,14 @@ class _SignupScreenState extends State<SignupScreen> {
               const Align(
                 alignment: Alignment.centerLeft,
                 child: Text('Full Name',
-                    style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14)),
+                    style:
+                        TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
               ),
               const SizedBox(height: 8),
               TextField(
                 controller: _nameCtrl,
                 decoration: InputDecoration(
-                  hintText: 'e.g. Rajesh Hamal',
+                  hintText: 'e.g. Salman Khan',
                   prefixIcon: const Icon(Icons.person_outline),
                   errorText: _nameError,
                 ),
@@ -189,9 +183,8 @@ class _SignupScreenState extends State<SignupScreen> {
               const Align(
                 alignment: Alignment.centerLeft,
                 child: Text('Email Address',
-                    style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14)),
+                    style:
+                        TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
               ),
               const SizedBox(height: 8),
               TextField(
@@ -207,9 +200,8 @@ class _SignupScreenState extends State<SignupScreen> {
               const Align(
                 alignment: Alignment.centerLeft,
                 child: Text('Password',
-                    style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14)),
+                    style:
+                        TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
               ),
               const SizedBox(height: 8),
               TextField(
@@ -223,11 +215,9 @@ class _SignupScreenState extends State<SignupScreen> {
                   prefixIcon: const Icon(Icons.lock_outline),
                   errorText: _passError,
                   suffixIcon: IconButton(
-                    icon: Icon(_obscure1
-                        ? Icons.visibility_off
-                        : Icons.visibility),
-                    onPressed: () =>
-                        setState(() => _obscure1 = !_obscure1),
+                    icon: Icon(
+                        _obscure1 ? Icons.visibility_off : Icons.visibility),
+                    onPressed: () => setState(() => _obscure1 = !_obscure1),
                   ),
                 ),
               ),
@@ -235,9 +225,8 @@ class _SignupScreenState extends State<SignupScreen> {
               const Align(
                 alignment: Alignment.centerLeft,
                 child: Text('Confirm Password',
-                    style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14)),
+                    style:
+                        TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
               ),
               const SizedBox(height: 8),
               TextField(
@@ -251,11 +240,9 @@ class _SignupScreenState extends State<SignupScreen> {
                   prefixIcon: const Icon(Icons.lock_outline),
                   errorText: _confirmError,
                   suffixIcon: IconButton(
-                    icon: Icon(_obscure2
-                        ? Icons.visibility_off
-                        : Icons.visibility),
-                    onPressed: () =>
-                        setState(() => _obscure2 = !_obscure2),
+                    icon: Icon(
+                        _obscure2 ? Icons.visibility_off : Icons.visibility),
+                    onPressed: () => setState(() => _obscure2 = !_obscure2),
                   ),
                 ),
               ),
@@ -263,8 +250,7 @@ class _SignupScreenState extends State<SignupScreen> {
               Row(children: [
                 Checkbox(
                   value: _remember,
-                  onChanged: (v) =>
-                      setState(() => _remember = v!),
+                  onChanged: (v) => setState(() => _remember = v!),
                   activeColor: AppTheme.primary,
                 ),
                 const Text('Remember me'),
@@ -272,8 +258,7 @@ class _SignupScreenState extends State<SignupScreen> {
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: _signup,
-                child: const Text('Sign Up',
-                    style: TextStyle(fontSize: 16)),
+                child: const Text('Sign Up', style: TextStyle(fontSize: 16)),
               ),
               const SizedBox(height: 20),
               const Row(children: [
@@ -282,9 +267,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   padding: EdgeInsets.symmetric(horizontal: 12),
                   child: Text('OR SIGNUP WITH',
                       style: TextStyle(
-                          color: Colors.grey,
-                          fontSize: 12,
-                          letterSpacing: 1)),
+                          color: Colors.grey, fontSize: 12, letterSpacing: 1)),
                 ),
                 Expanded(child: Divider()),
               ]),
@@ -337,8 +320,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   GestureDetector(
                     onTap: () => Navigator.pushReplacement(
                       context,
-                      MaterialPageRoute(
-                          builder: (_) => const LoginScreen()),
+                      MaterialPageRoute(builder: (_) => const LoginScreen()),
                     ),
                     child: Text('LOGIN',
                         style: TextStyle(

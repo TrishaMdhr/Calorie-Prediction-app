@@ -1,13 +1,3 @@
-// =============================================================================
-// FILE: lib/screens/login_screen.dart
-// ROLE: Login screen — email + password authentication
-// -----------------------------------------------------------------------------
-// - Validates email format and password strength client-side
-// - Calls AppProvider.loginAction() → POST /login → stores JWT token
-// - Shows loading spinner during server call
-// - Offline fallback: checks locally registered users in SharedPreferences
-// - On success → navigates to DashboardScreen
-// =============================================================================
 import 'package:flutter/material.dart';
 import 'admin/admin_dashboard_screen.dart';
 import 'package:provider/provider.dart';
@@ -44,8 +34,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   bool _validatePassword(String p) =>
-      p.length >= 8 &&
-          RegExp(r'[!@#\$%^&*(),.?":{}|<>]').hasMatch(p);
+      p.length >= 8 && RegExp(r'[!@#\$%^&*(),.?":{}|<>]').hasMatch(p);
 
   void _login() async {
     final email = _emailCtrl.text.trim();
@@ -62,8 +51,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (pass.isEmpty) {
         _passError = 'Please enter your password';
-      } else if (!_validatePassword(pass)) {
-        _passError = 'Min 8 characters and 1 symbol required';
       } else {
         _passError = null;
       }
@@ -85,32 +72,38 @@ class _LoginScreenState extends State<LoginScreen> {
     Navigator.pop(context); // Close spinner
 
     if (error != null) {
+      setState(() {
+        _passError = 'Incorrect email or password';
+      });
+
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(
-          content: Text(error),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 3),
-        ));
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('Incorrect email or password'),
+            backgroundColor: Colors.red,
+          ),
+        );
+
       return;
     }
 
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     if (provider.isAdmin) {
-     Navigator.pushReplacement(
-     context,
-      MaterialPageRoute(
-      builder: (_) => const AdminDashboardScreen(),
-    ),
-  );
-} else {
-  Navigator.pushReplacement(
-    context,
-    MaterialPageRoute(
-      builder: (_) => const DashboardScreen(),
-    ),
-  );
-}
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const AdminDashboardScreen(),
+        ),
+      );
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const DashboardScreen(),
+        ),
+      );
+    }
   }
 
   @override
@@ -126,22 +119,18 @@ class _LoginScreenState extends State<LoginScreen> {
       backgroundColor: Colors.white,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(
-              horizontal: 28, vertical: 20),
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               const SizedBox(height: 10),
               const Text('Welcome',
-                  style: TextStyle(
-                      fontSize: 18, color: Colors.black54)),
+                  style: TextStyle(fontSize: 18, color: Colors.black54)),
               const SizedBox(height: 8),
               const CalowrieLogo(fontSize: 32),
               const SizedBox(height: 16),
               const Text('Track your progress',
-                  style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold)),
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               const Text(
                 'Log in to track your calories and build\nhealthier eating habits.',
@@ -150,16 +139,13 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 20),
               const Text('Login',
-                  style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold)),
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
               const SizedBox(height: 20),
               const Align(
                 alignment: Alignment.centerLeft,
                 child: Text('Email Address',
-                    style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14)),
+                    style:
+                        TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
               ),
               const SizedBox(height: 8),
               TextField(
@@ -175,9 +161,8 @@ class _LoginScreenState extends State<LoginScreen> {
               const Align(
                 alignment: Alignment.centerLeft,
                 child: Text('Password',
-                    style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14)),
+                    style:
+                        TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
               ),
               const SizedBox(height: 8),
               TextField(
@@ -191,11 +176,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   prefixIcon: const Icon(Icons.lock_outline),
                   errorText: _passError,
                   suffixIcon: IconButton(
-                    icon: Icon(_obscure
-                        ? Icons.visibility_off
-                        : Icons.visibility),
-                    onPressed: () =>
-                        setState(() => _obscure = !_obscure),
+                    icon: Icon(
+                        _obscure ? Icons.visibility_off : Icons.visibility),
+                    onPressed: () => setState(() => _obscure = !_obscure),
                   ),
                 ),
               ),
@@ -204,8 +187,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 children: [
                   Checkbox(
                     value: _remember,
-                    onChanged: (v) =>
-                        setState(() => _remember = v!),
+                    onChanged: (v) => setState(() => _remember = v!),
                     activeColor: AppTheme.primary,
                   ),
                   const Text('Remember me'),
@@ -226,8 +208,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: _login,
-                child: const Text('Log In',
-                    style: TextStyle(fontSize: 16)),
+                child: const Text('Log In', style: TextStyle(fontSize: 16)),
               ),
               const SizedBox(height: 20),
               const Row(children: [
@@ -236,9 +217,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   padding: EdgeInsets.symmetric(horizontal: 12),
                   child: Text('OR LOGIN WITH',
                       style: TextStyle(
-                          color: Colors.grey,
-                          fontSize: 12,
-                          letterSpacing: 1)),
+                          color: Colors.grey, fontSize: 12, letterSpacing: 1)),
                 ),
                 Expanded(child: Divider()),
               ]),
@@ -291,8 +270,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   GestureDetector(
                     onTap: () => Navigator.pushReplacement(
                       context,
-                      MaterialPageRoute(
-                          builder: (_) => const SignupScreen()),
+                      MaterialPageRoute(builder: (_) => const SignupScreen()),
                     ),
                     child: Text('SIGNUP',
                         style: TextStyle(
@@ -322,14 +300,10 @@ class CalowrieLogo extends StatelessWidget {
     const green = Color(0xFF00C853);
     const grey = Color(0xFF334155);
 
-    final greyStyle = TextStyle(
-        fontSize: fontSize,
-        fontWeight: FontWeight.bold,
-        color: grey);
+    final greyStyle =
+        TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold, color: grey);
     final greenStyle = TextStyle(
-        fontSize: fontSize,
-        fontWeight: FontWeight.bold,
-        color: green);
+        fontSize: fontSize, fontWeight: FontWeight.bold, color: green);
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
