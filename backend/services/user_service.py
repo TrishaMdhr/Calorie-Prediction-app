@@ -1,12 +1,3 @@
-# =============================================================================
-# FILE: backend/services/user_service.py
-# ROLE: User storage and authentication helper (Database-backed)
-# -----------------------------------------------------------------------------
-# - Handles MySQL-based persistence of user accounts
-# - Performs password hashing and verification via crud layer
-# - Provides functions to register, log in, find users, and update daily calorie goal
-# =============================================================================
-
 from config import Config
 from database import SessionLocal
 import crud

@@ -1,25 +1,3 @@
-// =============================================================================
-// FILE: lib/screens/log_food_screen.dart
-// ROLE: Food logging screen — 3 input methods
-// -----------------------------------------------------------------------------
-// TAB 0 — SCAN FOOD (_ScanPanel):
-//   · Picks image from camera/gallery
-//   · Sends to POST /predict (CNN food recognition)
-//   · _saveToLog() → AppProvider.addFoodLog() → syncs to backend
-//
-// TAB 1 — ENTER MANUALLY (_ManualPanel):
-//   · User types food name, calories, protein, carbs, fat
-//   · Food name field has live autocomplete via FoodSearchService (GET /search)
-//   · _saveToLog() → AppProvider.addFoodLog() → syncs to backend
-//   · Bookmark icon → AppProvider.saveToMacros() (saves for reuse)
-//
-// TAB 2 — SAVED FOOD MACROS (_SavedMacrosPanel):
-//   · Lists AppProvider.savedMacros
-//   · "+" button → AppProvider.addFoodLog() → syncs to backend
-//   · Trash icon → AppProvider.deleteMacro()
-//
-// All panels respect the Meal Type selector (Breakfast/Lunch/Dinner/Snacks)
-// =============================================================================
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -174,7 +152,7 @@ class _OptionButton extends StatelessWidget {
   }
 }
 
-// ── CNN Food Scanner ──────────────────────────────────────────────
+// -- CNN Food Scanner --
 class _ScanPanel extends StatefulWidget {
   final String mealType;
   const _ScanPanel({required this.mealType});
@@ -421,7 +399,7 @@ class _ScanPanelState extends State<_ScanPanel> {
             ),
             const SizedBox(height: 14),
 
-            // ── Editable result fields ──────────────
+            // -- Editable result fields --
             const Text('FOOD DETAILS — tap any field to correct',
                 style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold, letterSpacing: 0.8)),
             const SizedBox(height: 10),
@@ -597,7 +575,7 @@ class _ScanPanelState extends State<_ScanPanel> {
   }
 }
 
-// ── Manual Panel ──────────────────────────────────────────────────
+// -- Manual Panel --
 class _ManualPanel extends StatefulWidget {
   final String mealType;
   const _ManualPanel({required this.mealType});
@@ -1134,7 +1112,7 @@ class _FoodItemFormState extends State<_FoodItemForm> {
   }
 }
 
-// ── Saved Macros Panel ────────────────────────────────────────────
+// -- Saved Macros Panel --
 class _SavedMacrosPanel extends StatelessWidget {
   final String mealType;
   const _SavedMacrosPanel({required this.mealType});

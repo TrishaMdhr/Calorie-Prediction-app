@@ -1,13 +1,3 @@
-// =============================================================================
-// FILE: lib/screens/signup_screen.dart
-// ROLE: Registration screen — create a new user account
-// -----------------------------------------------------------------------------
-// - Validates name, email, password, confirm-password client-side
-// - Calls AppProvider.registerAction() → POST /register → stores JWT token
-// - Shows loading spinner during server call
-// - Offline fallback: saves to local SharedPreferences if server unreachable
-// - On success → navigates to DashboardScreen
-// =============================================================================
 import 'package:flutter/material.dart';
 
 import 'package:provider/provider.dart';

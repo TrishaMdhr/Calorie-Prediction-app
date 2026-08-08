@@ -56,7 +56,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Column(
         children: [
           const SizedBox(height: 8),
-          // ── Avatar ──────────────────────────────
+          // -- Avatar --
             Stack(
               children: [
                 CircleAvatar(
@@ -89,7 +89,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 12),
 
-            // ── Name & Email ─────────────────────────
+            // -- Name & Email --
             if (!_editing) ...[
               Text(
                 user.name.isEmpty ? 'Your Name' : user.name,
@@ -179,7 +179,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             const SizedBox(height: 20),
 
-            // ── Stats Row ────────────────────────────
+            // -- Stats Row --
             Row(children: [
               _StatCard(
                 label: 'Goal',
@@ -209,7 +209,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ]),
             const SizedBox(height: 16),
 
-            // ── Current Goal Card ────────────────────
+            // -- Current Goal Card --
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
@@ -251,7 +251,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 16),
 
-            // ── Goal Buttons ─────────────────────────
+            // -- Goal Buttons --
             OutlinedButton.icon(
               onPressed: () => Navigator.push(
                 context,
@@ -278,7 +278,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const Divider(),
             const SizedBox(height: 16),
 
-            // ── Logout ───────────────────────────────
+            // -- Logout --
             ElevatedButton.icon(
               onPressed: () => _confirmLogout(context, provider),
               icon: const Icon(Icons.logout),

@@ -1,4 +1,3 @@
-
 import 'dart:async';
 import 'dart:convert';
 
@@ -53,7 +52,7 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
-  // ── Local Prefs ──────────────────────────────────────────
+  // -- Local Prefs ---
   Future<void> _loadLocalPrefs() async {
     final prefs = await SharedPreferences.getInstance();
 
@@ -106,7 +105,7 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
-  // ── Calorie History (WMA) ────────────────────────────────
+  // -- Calorie History (WMA) --
   Future<void> _loadHistory() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString('calorie_history');
@@ -139,7 +138,7 @@ class AppProvider extends ChangeNotifier {
     await prefs.setString('last_log_date', today);
   }
 
-  // ── WMA Prediction ───────────────────────────────────────
+  // -- WMA Prediction --
   double get wmaNextDayPrediction {
     if (dailyCalorieHistory.isEmpty) return 0;
     const weights = [0.5, 0.3, 0.2];
@@ -209,7 +208,7 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
-  // ── AUTH ─────────────────────────────────────────────────
+  // -- AUTH --
 
   /// Registers user via server, returns null on success or an error string.
   Future<String?> registerAction(String email, String password, String name) async {
@@ -399,7 +398,7 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
-  // ── LOGS ─────────────────────────────────────────────────
+  // -- LOGS --
 
   /// Add a food log locally AND sync to server.
   Future<void> addFoodLog(FoodLog log) async {
@@ -680,7 +679,7 @@ class AppProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
-  // ── LOCAL USER HELPERS (fallback) ────────────────────────
+  // -- LOCAL USER HELPERS (fallback) --
   void registerUser(String email, String password, String name) {
     registeredUsers.add({'email': email, 'password': password, 'name': name});
     _saveUsers();

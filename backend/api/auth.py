@@ -1,11 +1,3 @@
-# =============================================================================
-# FILE: backend/api/auth.py
-# ROLE: JWT (JSON Web Token) creation and request verification decorator
-# -----------------------------------------------------------------------------
-# - Generates 24-hour expiration tokens for verified logins
-# - Provides `@token_required` decorator to protect routes
-# - Sets request.current_user_id from decoded payload on success
-# =============================================================================
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 

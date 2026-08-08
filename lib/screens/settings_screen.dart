@@ -12,7 +12,7 @@ class SettingsScreen extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       children: [
-        // ── SERVER CONNECTION ────────────────────────
+        // -- SERVER CONNECTION --
         const _SectionTitle('SERVER CONNECTION'),
         _SettingsCard(
           children: [
@@ -47,7 +47,7 @@ class SettingsScreen extends StatelessWidget {
         ),
         const SizedBox(height: 20),
 
-          // ── NOTIFICATIONS ───────────────────────────
+          // -- NOTIFICATIONS --
           const _SectionTitle('NOTIFICATIONS'),
           _SettingsCard(
             children: [
@@ -68,7 +68,7 @@ class SettingsScreen extends StatelessWidget {
           ),
           const SizedBox(height: 20),
 
-          // ── FOOD HISTORY ────────────────────────────
+          // -- FOOD HISTORY --
           const _SectionTitle('FOOD HISTORY'),
           if (provider.todayLogs.isEmpty)
             const _SettingsCard(children: [
@@ -152,7 +152,7 @@ class SettingsScreen extends StatelessWidget {
           ],
           const SizedBox(height: 20),
 
-          // ── ABOUT ───────────────────────────────────
+          // -- ABOUT --
           const _SectionTitle('ABOUT'),
           _SettingsCard(
             children: [
@@ -277,7 +277,7 @@ class _SettingsCard extends StatelessWidget {
   }
 }
 
-// ── Rating Dialog Widget ─────────────────────────────────────────────────────
+// -- Rating Dialog Widget --
 class _RatingDialog extends StatefulWidget {
   final int initialRating;
   final Function(int) onRatingSelected;

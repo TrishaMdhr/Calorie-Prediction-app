@@ -1,12 +1,3 @@
-// =============================================================================
-// FILE: lib/screens/admin/add_edit_food_dialog.dart
-// ROLE: Add/Edit dialog for a single food item, used by FoodsScreen.
-// Pass `food` (a Map from /admin/foods) to edit, or leave it null to add new.
-// Fibre/Sodium are not part of this app's UI — they're sent to the backend
-// as 0 and simply not surfaced here.
-// Returns `true` via Navigator.pop when a save happened, so the caller can
-// refresh its list.
-// =============================================================================
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 

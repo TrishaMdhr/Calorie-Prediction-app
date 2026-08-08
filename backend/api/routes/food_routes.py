@@ -1,16 +1,3 @@
-# =============================================================================
-# FILE: backend/api/routes/food_routes.py
-# ROLE: Food database endpoints
-# -----------------------------------------------------------------------------
-# POST /manual            — Register a custom food item (requires auth)
-#                           Body: food_name, calories, protein, carbs, fat
-#                           Returns: food_id for use with POST /log
-# GET  /food/<name>       — Get a specific food item by name
-# GET  /search?q=         — Search food catalog (no auth required)
-#
-# NOTE: CNN image prediction (POST /predict) is in predict_routes.py
-# food_service.py handles database food storage
-# =============================================================================
 from flask import Blueprint, jsonify, request
 
 from api.auth import token_required

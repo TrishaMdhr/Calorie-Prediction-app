@@ -1,11 +1,3 @@
-// =============================================================================
-// FILE: lib/models/food_log_model.dart
-// ROLE: Data model — a single food log entry
-// -----------------------------------------------------------------------------
-// Fields: logId (server ID for deletion), name, calories, protein, carbs, fat,
-//         mealType (Breakfast/Lunch/Dinner/Snacks), loggedAt (timestamp)
-// Used by: AppProvider.todayLogs, LogFoodScreen, DashboardScreen
-// =============================================================================
 class FoodLog {
   int? logId; // server-assigned ID for deletion
   String name;

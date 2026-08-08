@@ -1,11 +1,3 @@
-# =============================================================================
-# FILE: backend/services/ml_service.py
-# ROLE: Machine Learning model wrapper service
-# -----------------------------------------------------------------------------
-# - Checks availability of CNN model (tensorflow/keras) and Regression imports
-# - Interfaces with backend/ml/predict.py to classify uploaded food images
-# - Interfaces with backend/ml/regression.py to perform user calorie prediction
-# =============================================================================
 import os
 import tempfile
 from pathlib import Path

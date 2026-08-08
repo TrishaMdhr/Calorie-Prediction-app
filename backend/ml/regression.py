@@ -1,11 +1,3 @@
-# =============================================================================
-# FILE: backend/ml/regression.py
-# ROLE: Core Linear Regression calorie intake trend predictor
-# -----------------------------------------------------------------------------
-# - Fits a scikit-learn LinearRegression model on the user's historical logs
-# - Calculates calorie values over daily timestamps [1..N] to predict day N+offset
-# - Uses a goal-based heuristic fallback with variations if data is sparse (< 2 days)
-# =============================================================================
 import numpy as np
 from sklearn.linear_model import LinearRegression
 

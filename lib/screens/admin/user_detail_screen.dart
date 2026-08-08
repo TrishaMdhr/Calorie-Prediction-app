@@ -1,7 +1,3 @@
-// =============================================================================
-// FILE: lib/screens/admin/user_detail_screen.dart
-// ROLE: Read-only detail view for a single user, opened from UsersScreen.
-// =============================================================================
 import 'package:flutter/material.dart';
 
 class UserDetailScreen extends StatelessWidget {

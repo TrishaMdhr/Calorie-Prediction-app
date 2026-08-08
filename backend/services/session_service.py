@@ -1,12 +1,3 @@
-# =============================================================================
-# FILE: backend/services/session_service.py
-# ROLE: Login/logout session tracking for the admin "Login Activity" view
-# -----------------------------------------------------------------------------
-# - A session row is created on every successful /login
-# - /logout closes the most recent open session for that user
-# - token_required (api/auth.py) best-effort "touches" last_activity on every
-#   authenticated request, so admins can see how recently a user was active
-# =============================================================================
 from database import SessionLocal
 import crud
 

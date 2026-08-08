@@ -290,7 +290,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-// ── caLOWrie Logo ───────────────────────────────────────
+// -- caLOWrie Logo --
 class CalowrieLogo extends StatelessWidget {
   final double fontSize;
   const CalowrieLogo({super.key, this.fontSize = 32});

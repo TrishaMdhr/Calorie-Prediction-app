@@ -1,17 +1,3 @@
-# =============================================================================
-# FILE: backend/api/routes/tracking_routes.py
-# ROLE: Food logging and calorie tracking endpoints
-# -----------------------------------------------------------------------------
-# POST   /log              — add a food log entry (food_id, quantity, meal_type,
-#                            protein, carbs, fat) — JWT required
-# GET    /logs             — list today's logs; ?date=YYYY-MM-DD to filter
-# DELETE /log/<id>         — delete a specific log entry — JWT required
-# GET    /daily            — today's total + remaining + recommendations
-# GET    /weekly           — 7-day summary with avg/min/max
-# GET    /history          — N-day history (default 30, max 90)
-#
-# All logs persisted to backend/logs.json via tracking_service.py
-# =============================================================================
 from datetime import date
 from flask import Blueprint, jsonify, request
 

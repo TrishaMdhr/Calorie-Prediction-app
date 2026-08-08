@@ -1,23 +1,3 @@
-// =============================================================================
-// FILE: lib/screens/calorie_prediction_screen.dart
-// ROLE: Calorie prediction screen — shows two ML prediction models side by side
-// -----------------------------------------------------------------------------
-// CARD 1 — WMA (CLIENT-SIDE):
-//   · Weighted Moving Average using last 3 days of AppProvider.dailyCalorieHistory
-//   · Formula: (0.5 × Day0) + (0.3 × Day-1) + (0.2 × Day-2)
-//   · Available offline, computed locally
-//
-// CARD 2 — LINEAR REGRESSION (SERVER-SIDE):
-//   · Calls AppProvider.fetchFuturePrediction(1) → GET /predict/future?day=1
-//   · Server trains sklearn.LinearRegression on user's real log history
-//   · Fetched on initState and after "Mark Day Done"
-//
-// BUTTON — "I'm done eating for today":
-//   · Calls AppProvider.markDayComplete() to archive today → history
-//   · Triggers refresh of ML prediction
-//
-// BAR CHART: Last 7 days visualised using fl_chart (BarChart)
-// =============================================================================
 import 'package:flutter/material.dart';
 
 import 'package:provider/provider.dart';
@@ -820,4 +800,4 @@ class _StatChip extends StatelessWidget {
     );
   }
 }
-
+

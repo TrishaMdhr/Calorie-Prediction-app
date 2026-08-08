@@ -1,18 +1,3 @@
-// =============================================================================
-// FILE: lib/screens/calculate_goal_screen.dart
-// ROLE: Calorie goal setup — two modes
-// -----------------------------------------------------------------------------
-// MODE 1 — CALCULATE (default):
-//   · Collects gender, age, weight, height, activity level, fitness goal
-//   · Uses Mifflin-St Jeor formula to compute BMR → TDEE → adjusted goal
-//   · _applyGoal() → AppProvider.setCalorieGoal() → syncs to server PUT /user/goal
-//
-// MODE 2 — MANUAL (manualMode: true):
-//   · Slider-based input for direct kcal entry
-//   · _applyGoal() → same syncing path as above
-//
-// Accessed from: SetGoalScreen, SettingsScreen
-// =============================================================================
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 

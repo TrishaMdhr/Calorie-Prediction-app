@@ -1,12 +1,3 @@
-# =============================================================================
-# FILE: backend/services/food_service.py
-# ROLE: Food database storage and retrieval services (Database-backed)
-# -----------------------------------------------------------------------------
-# - Queries food catalog items directly from the MySQL database
-# - Provides food search, retrieval, registration of custom items,
-#   and prediction catalog lookup integration
-# =============================================================================
-
 from utils.nutrition import estimate_calories
 from database import SessionLocal
 from models import FoodItem

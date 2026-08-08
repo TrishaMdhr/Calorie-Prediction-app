@@ -1,12 +1,3 @@
-// =============================================================================
-// FILE: lib/models/user_model.dart
-// ROLE: Data model — logged-in user profile
-// -----------------------------------------------------------------------------
-// Fields: name, email, calorieGoal, gender, age, weight, height, activityLevel,
-//         fitnessGoal
-// Used by: AppProvider, CalculateGoalScreen, ProfileScreen, DashboardScreen
-// =============================================================================
-
 class UserModel {
   String name;
   String email;

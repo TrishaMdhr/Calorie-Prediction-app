@@ -1,20 +1,3 @@
-"""
-Prepare the Food-101 dataset for training.
-
-Usage (PowerShell):
-    python ml/training/prepare_dataset.py --food101 "C:\\path\\to\\food-101"
-
-This reads meta/train.txt and meta/test.txt (provided by Food-101) and copies
-the images into:
-    <food101>/train/<class>/image.jpg
-    <food101>/validation/<class>/image.jpg
-
-After running, set your env vars and train:
-    $env:FOOD101_TRAIN_DIR = "C:\\path\\to\\food-101\\train"
-    $env:FOOD101_VAL_DIR   = "C:\\path\\to\\food-101\\validation"
-    python ml/training/train_cnn.py
-"""
-
 import argparse
 import shutil
 from pathlib import Path

@@ -1,18 +1,3 @@
-# =============================================================================
-# FILE: backend/api/routes/admin_routes.py
-# ROLE: Admin panel endpoints (requires role == "admin")
-# -----------------------------------------------------------------------------
-# GET    /admin/dashboard        — total users / foods / predictions
-# GET    /admin/users            — list all users
-# PUT    /admin/users/<id>/role  — promote/demote a user (body: {"role": "admin"|"user"})
-# DELETE /admin/users/<id>       — delete a user
-# GET    /admin/foods            — list all food items
-# POST   /admin/foods            — create a food item
-# PUT    /admin/foods/<id>       — update a food item
-# DELETE /admin/foods/<id>       — delete a food item
-# GET    /admin/food-logs        — view-only, all users' food logs (filters: user, date_from, date_to, meal_type)
-# GET    /admin/login-activity   — view-only, all login/logout sessions
-# =============================================================================
 from flask import Blueprint, jsonify, request
 
 from api.auth import token_required, admin_required, get_current_user_id

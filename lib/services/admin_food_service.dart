@@ -1,7 +1,3 @@
-// =============================================================================
-// FILE: lib/services/admin_food_service.dart
-// ROLE: Admin food CRUD — talks to /admin/foods endpoints (requires admin JWT)
-// =============================================================================
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 

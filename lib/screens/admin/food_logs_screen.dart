@@ -1,9 +1,3 @@
-// =============================================================================
-// FILE: lib/screens/admin/food_logs_screen.dart
-// ROLE: Admin — view-only list of every food log across all users.
-// Filters: search by user (name/email), date range, meal type.
-// Calls GET /admin/food-logs?user=&date_from=&date_to=&meal_type=
-// =============================================================================
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;

@@ -1,12 +1,3 @@
-# =============================================================================
-# FILE: backend/services/tracking_service.py
-# ROLE: Food log data storage and aggregation services (Database-backed)
-# -----------------------------------------------------------------------------
-# - Logs and aggregates food intake using the MySQL database
-# - Handles calorie computations and aggregations (today's, weekly, history)
-# - Provides functions to add, list, delete log entries
-# =============================================================================
-
 from collections import defaultdict
 from datetime import date, timedelta
 from database import SessionLocal

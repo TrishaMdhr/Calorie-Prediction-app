@@ -1,8 +1,3 @@
-// =============================================================================
-// FILE: lib/screens/admin/login_activity_screen.dart
-// ROLE: Admin — view-only list of login sessions (login time, logout time,
-// session duration, last activity). Calls GET /admin/login-activity
-// =============================================================================
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;

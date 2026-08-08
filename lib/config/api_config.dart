@@ -1,16 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Resolves the Flask backend URL per platform.
-///
-/// Priority order:
-///   1. User-saved URL in SharedPreferences (set via Settings screen)
-///      → Used when running on a **physical device** or a **teammate's machine**.
-///      → The user sets this to their server's LAN IP, e.g. `http://192.168.1.10:5000`
-///   2. `--dart-define=API_BASE_URL=http://...` compile-time override
-///   3. Platform defaults:
-///      - Android emulator  → `http://10.0.2.2:5000` (host loopback alias)
-///      - iOS / Web / Desktop → `http://localhost:5000`
 class ApiConfig {
   ApiConfig._();
 

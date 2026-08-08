@@ -1,19 +1,3 @@
-// =============================================================================
-// FILE: lib/screens/dashboard_screen.dart
-// ROLE: Main home screen shown after login
-// -----------------------------------------------------------------------------
-// SECTIONS (top → bottom):
-//   1. App bar (greeting + notification bell)
-//   2. Calorie ring (today's intake vs. goal, animated arc)
-//   3. Progress bar (kcal remaining)
-//   4. Macros row — Protein | Carbs | Fat (from AppProvider.todayLogs)
-//   5. Dietary Insights & Alerts (from AppProvider.serverRecommendations/Alerts)
-//   6. Set Goal button (shown only if goal = 0)
-//   7. Recent Logs list (today's food entries with delete swipe)
-//   8. Bottom navigation bar (Home / Prediction / Profile / Settings)
-//
-// ON INIT: fetches today's logs + recommendations from server via AppProvider
-// =============================================================================
 import 'package:flutter/material.dart';
 
 import 'package:provider/provider.dart';

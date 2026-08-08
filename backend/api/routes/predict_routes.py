@@ -1,18 +1,3 @@
-# =============================================================================
-# FILE: backend/api/routes/predict_routes.py
-# ROLE: Machine Learning prediction endpoints
-# -----------------------------------------------------------------------------
-# POST /predict              — CNN food image prediction (no auth needed)
-#                              Delegates to ml_service.predict_from_image()
-#
-# GET  /predict/future       — Linear Regression calorie prediction (JWT required)
-#   · Query param: ?day=1 (how many days ahead to predict)
-#   · Delegates to ml_service.predict_future_calories(user_id, day)
-#   · ml/regression.py trains sklearn.LinearRegression on user's log history
-#   · Returns: predicted_calories, recommendation
-#
-# Checks ml_service.is_regression_available() before calling (needs sklearn+numpy)
-# =============================================================================
 from flask import Blueprint, jsonify, request
 
 from api.auth import get_current_user_id, token_required

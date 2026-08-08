@@ -1,27 +1,3 @@
-"""
-Train the Food-101 CNN model. Run only when you need to rebuild food_model.keras.
-
-Set dataset paths before running:
-  $env:FOOD101_TRAIN_DIR = "C:\\path\\to\\food-101\\train"
-  $env:FOOD101_VAL_DIR   = "C:\\path\\to\\food-101\\validation"
-  python ml/training/train_cnn.py
-
-Expected accuracy with these settings: ~75-85% val accuracy on Food-101.
-Previous script achieved ~45% due to the 5 issues fixed below.
-
-Fixes applied vs old script
-────────────────────────────
-1. IMAGE SIZE   : 128x128 -> 224x224  (pretrained backbones were designed for >=224)
-2. BACKBONE     : MobileNetV2 -> EfficientNetV2S  (much stronger feature extractor)
-3. PREPROCESSING: removed Rescaling(1/255) layer — EfficientNetV2S handles pixel
-                  normalisation internally via include_preprocessing=True, so adding
-                  a manual Rescaling caused double-scaling at inference (the foie_gras bug).
-4. AUGMENTATION : added RandomFlip, RandomRotation, RandomZoom, RandomContrast —
-                  critical for Food-101 which has high intra-class visual variance.
-5. FINE-TUNING  : unfreezes last 60 layers (was 30) and uses ReduceLROnPlateau so
-                  LR decays automatically instead of being fixed at 1e-5.
-"""
-
 import json
 import os
 import sys
