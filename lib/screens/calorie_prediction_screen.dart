@@ -182,7 +182,7 @@ class _CaloriePredictionScreenState extends State<CaloriePredictionScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('WMA (CLIENT)',
+                        const Text('3-DAY AVERAGE',
                             style: TextStyle(
                                 color: Colors.white70,
                                 fontSize: 10,
@@ -197,7 +197,7 @@ class _CaloriePredictionScreenState extends State<CaloriePredictionScreen> {
                         ),
                         Text(
                           dayComplete && tomorrowKcal != null
-                              ? 'Avg of $historyCount day${historyCount > 1 ? 's' : ''}'
+                              ? 'Based on last $historyCount day${historyCount > 1 ? 's' : ''}'
                               : hasData
                               ? 'Mark day done first'
                               : 'Log meals first',
@@ -232,7 +232,7 @@ class _CaloriePredictionScreenState extends State<CaloriePredictionScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('REGRESSION (ML)',
+                        const Text('AI FORECAST',
                             style: TextStyle(
                                 color: Colors.white70,
                                 fontSize: 10,
@@ -256,7 +256,7 @@ class _CaloriePredictionScreenState extends State<CaloriePredictionScreen> {
                         ),
                         Text(
                           _serverPrediction != null
-                              ? 'Server Trend Fit Model'
+                              ? 'Smart AI Model'
                               : 'Offline / No data',
                           style: const TextStyle(
                               color: Colors.white60, fontSize: 10),
@@ -328,7 +328,7 @@ class _CaloriePredictionScreenState extends State<CaloriePredictionScreen> {
                 if (hasData)
                   Text(
                     'Today: ${todayKcal.toInt()} kcal',
-                    style: TextStyle(color: AppTheme.primary, fontSize: 13),
+                    style: const TextStyle(color: AppTheme.primary, fontSize: 13),
                   ),
               ],
             ),
@@ -477,7 +477,7 @@ class _CaloriePredictionScreenState extends State<CaloriePredictionScreen> {
                   Expanded(
                     child: Text(
                       dayComplete
-                          ? 'Two prediction methods shown above — WMA (client-side) and Linear Regression (server ML model). Log daily for greater accuracy!'
+                          ? 'Two smart estimation models shown above — 3-Day Recent Trend & AI Smart Forecast. Log daily for even greater accuracy!'
                           : 'Once you\'re done eating for the day, tap the button above to see tomorrow\'s prediction from both models.',
                       style: TextStyle(
                           color:
@@ -678,7 +678,7 @@ class _CaloriePredictionScreenState extends State<CaloriePredictionScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'ML MODEL METRICS',
+                'PREDICTION ACCURACY',
                 style: TextStyle(
                   color: Theme.of(context).primaryColor,
                   fontWeight: FontWeight.bold,
@@ -695,7 +695,7 @@ class _CaloriePredictionScreenState extends State<CaloriePredictionScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  hasRealData ? 'Real History' : 'Goal Baseline',
+                  hasRealData ? 'Personalized' : 'Standard Baseline',
                   style: TextStyle(
                     color: hasRealData ? Colors.green : Colors.orange,
                     fontSize: 10,
@@ -707,23 +707,23 @@ class _CaloriePredictionScreenState extends State<CaloriePredictionScreen> {
           ),
           const SizedBox(height: 12),
           Text(
-            'Linear Regression performance metrics evaluated on your daily calorie trends:',
+            'Accuracy measurements based on your recorded eating history:',
             style: TextStyle(color: subTextColor, fontSize: 12),
           ),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildMetricItem('MAE', '${metrics['mae']}', 'kcal', 'Mean Abs Error', subTextColor, textColor),
-              _buildMetricItem('RMSE', '${metrics['rmse']}', 'kcal', 'Root Mean Sq Error', subTextColor, textColor),
-              _buildMetricItem('R²', '${metrics['r2']}', '', 'R-Squared', subTextColor, textColor),
+              _buildMetricItem('Avg Error', '${metrics['mae']}', 'kcal', 'Average Deviation', subTextColor, textColor),
+              _buildMetricItem('Variance', '${metrics['rmse']}', 'kcal', 'Expected Shift', subTextColor, textColor),
+              _buildMetricItem('Fit Score', '${metrics['r2']}', '', 'Pattern Match', subTextColor, textColor),
             ],
           ),
           const SizedBox(height: 12),
           Divider(color: isDark ? Colors.grey.shade700 : Colors.grey.shade200, height: 1),
           const SizedBox(height: 8),
           Text(
-            'Sample Size: $sampleSize day${sampleSize != 1 ? 's' : ''} of history used for training',
+            'Recorded History: $sampleSize day${sampleSize != 1 ? 's' : ''} used for prediction',
             style: TextStyle(color: subTextColor, fontSize: 10, fontStyle: FontStyle.italic),
           ),
         ],

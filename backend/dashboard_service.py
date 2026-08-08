@@ -47,6 +47,9 @@ def get_dashboard_data(days=7):
                 logs_by_day[log_date]["calories"] += (log.calories_total or 0)
 
             meal = (log.meal_type or "Lunch").strip().capitalize()
+            # Normalize "Snacks" → "Snack" so both variants bucket together
+            if meal.lower() == "snacks":
+                meal = "Snack"
             if meal in meal_counts:
                 meal_counts[meal] += 1
             else:

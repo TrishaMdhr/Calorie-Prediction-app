@@ -29,8 +29,22 @@ class _AdminDashboardScreenState
   int totalUsers = 0;
   int totalFoods = 0;
   int totalPredictions = 0;
+  double todayCalories = 0;
+
+  // Real chart data from API
+  List<Map<String, dynamic>> _userGrowthData = [];
+  List<Map<String, dynamic>> _mealDistribution = [];
 
   bool loading = true;
+
+  // Colors for the pie chart sections
+  static const List<Color> _pieColors = [
+    Color(0xFF4F46E5),
+    Color(0xFF10B981),
+    Color(0xFFF59E0B),
+    Color(0xFFEF4444),
+    Color(0xFF8B5CF6),
+  ];
 
   @override
   void initState() {
@@ -57,149 +71,160 @@ class _AdminDashboardScreenState
         setState(() {
           totalUsers = data["total_users"] ?? 0;
           totalFoods = data["total_foods"] ?? 0;
-          totalPredictions =
-              data["total_predictions"] ?? 0;
+          totalPredictions = data["total_predictions"] ?? 0;
+          todayCalories = (data["today_calories"] as num?)?.toDouble() ?? 0;
+
+          // Parse real chart data
+          _userGrowthData = List<Map<String, dynamic>>.from(
+              data["user_growth"] ?? []);
+          _mealDistribution = List<Map<String, dynamic>>.from(
+              data["meal_distribution"] ?? []);
 
           loading = false;
         });
       } else {
-        setState(() {
-          loading = false;
-        });
+        setState(() => loading = false);
       }
     } catch (e) {
-      setState(() {
-        loading = false;
-      });
-
+      setState(() => loading = false);
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString()),
-        ),
+        SnackBar(content: Text(e.toString())),
       );
     }
   }
 
-  List<FlSpot> get userGrowth => const [
-        FlSpot(0, 3),
-        FlSpot(1, 5),
-        FlSpot(2, 4),
-        FlSpot(3, 7),
-        FlSpot(4, 6),
-        FlSpot(5, 9),
-        FlSpot(6, 8),
-      ];
+  List<FlSpot> get userGrowth {
+    if (_userGrowthData.isEmpty) {
+      return const [FlSpot(0, 0)];
+    }
+    return _userGrowthData.asMap().entries.map((e) {
+      return FlSpot(
+        e.key.toDouble(),
+        (e.value['count'] as num).toDouble(),
+      );
+    }).toList();
+  }
 
-  List<PieChartSectionData> get foodPie => [
+  List<PieChartSectionData> get foodPie {
+    if (_mealDistribution.isEmpty) {
+      return [
         PieChartSectionData(
-          value: 40,
-          title: "40%",
+          value: 1,
+          title: 'No data',
           radius: 55,
-          color: Colors.blue,
+          color: Colors.grey,
           titleStyle: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        PieChartSectionData(
-          value: 30,
-          title: "30%",
-          radius: 55,
-          color: Colors.green,
-          titleStyle: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        PieChartSectionData(
-          value: 20,
-          title: "20%",
-          radius: 55,
-          color: Colors.orange,
-          titleStyle: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        PieChartSectionData(
-          value: 10,
-          title: "10%",
-          radius: 55,
-          color: Colors.red,
-          titleStyle: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 10),
+        )
       ];
+    }
+    final total = _mealDistribution
+        .fold<double>(0, (sum, m) => sum + (m['count'] as num).toDouble());
+    return _mealDistribution.asMap().entries.map((e) {
+      final pct = total > 0
+          ? ((e.value['count'] as num).toDouble() / total * 100)
+              .toStringAsFixed(0)
+          : '0';
+      return PieChartSectionData(
+        value: (e.value['count'] as num).toDouble(),
+        title: '$pct%',
+        radius: 55,
+        color: _pieColors[e.key % _pieColors.length],
+        titleStyle: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 11),
+      );
+    }).toList();
+  }
 
   Widget buildLineChart() {
+    // Compute the max count so y-axis scales properly
+    final maxCount = _userGrowthData.isEmpty
+        ? 5.0
+        : _userGrowthData
+            .map((e) => (e['count'] as num).toDouble())
+            .fold(0.0, (a, b) => a > b ? a : b);
+    final yMax = (maxCount < 4 ? 4.0 : maxCount + 1).ceilToDouble();
+
     return LineChart(
       LineChartData(
+        minY: 0,
+        maxY: yMax,
         borderData: FlBorderData(show: false),
-
         gridData: FlGridData(
           show: true,
           drawVerticalLine: false,
+          horizontalInterval: 1,
+          getDrawingHorizontalLine: (_) => FlLine(
+            color: Colors.grey.withValues(alpha: 0.15),
+            strokeWidth: 1,
+            dashArray: [4, 4],
+          ),
         ),
-
         titlesData: FlTitlesData(
           rightTitles: const AxisTitles(),
           topTitles: const AxisTitles(),
-
           leftTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              reservedSize: 28,
+              reservedSize: 32,
+              interval: 1, // integers only on y-axis
+              getTitlesWidget: (value, meta) {
+                // Skip non-integer values (no decimals for user counts)
+                if (value != value.roundToDouble()) return const SizedBox();
+                return Text(
+                  value.toInt().toString(),
+                  style: const TextStyle(fontSize: 11),
+                );
+              },
             ),
           ),
-
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
+              interval: 1, // one label per data point only
+              reservedSize: 22,
               getTitlesWidget: (value, meta) {
-                const days = [
-                  "M",
-                  "T",
-                  "W",
-                  "T",
-                  "F",
-                  "S",
-                  "S"
-                ];
-
-                if (value.toInt() >= days.length) {
+                // Only draw at exact integer positions
+                if (value != value.roundToDouble()) return const SizedBox();
+                final idx = value.toInt();
+                if (idx < 0 || idx >= _userGrowthData.length) {
                   return const SizedBox();
                 }
-
-                return Text(
-                  days[value.toInt()],
-                  style: const TextStyle(
-                    fontSize: 11,
+                return Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    _userGrowthData[idx]['label'] ?? '',
+                    style: const TextStyle(fontSize: 10),
                   ),
                 );
               },
             ),
           ),
         ),
-
         lineBarsData: [
           LineChartBarData(
             spots: userGrowth,
-
             isCurved: true,
-
             color: Colors.indigo,
-
-            barWidth: 4,
-
-            dotData: const FlDotData(
+            barWidth: 3,
+            dotData: FlDotData(
               show: true,
+              getDotPainter: (spot, percent, bar, index) =>
+                  FlDotCirclePainter(
+                radius: 4,
+                color: Colors.indigo,
+                strokeWidth: 2,
+                strokeColor: Colors.white,
+              ),
             ),
-
             belowBarData: BarAreaData(
               show: true,
-              color: Colors.indigo.withOpacity(.15),
+              color: Colors.indigo.withValues(alpha: 0.12),
             ),
           ),
         ],
@@ -263,11 +288,11 @@ class _AdminDashboardScreenState
           ],
         ),
 
-        const GradientStatCard(
-          title: "Calories",
-          value: "2145",
+        GradientStatCard(
+          title: "Calories Today",
+          value: "${todayCalories.toStringAsFixed(0)} kcal",
           icon: Icons.local_fire_department,
-          gradient: [
+          gradient: const [
             Color(0xffEF4444),
             Color(0xffF87171),
           ],
@@ -474,34 +499,20 @@ Widget build(BuildContext context) {
                                 MainAxisAlignment.center,
                             crossAxisAlignment:
                                 CrossAxisAlignment.start,
-                            children: const [
-
-                              LegendTile(
-                                color: Colors.blue,
-                                title: "Chicken",
-                              ),
-
-                              SizedBox(height: 12),
-
-                              LegendTile(
-                                color: Colors.green,
-                                title: "Rice",
-                              ),
-
-                              SizedBox(height: 12),
-
-                              LegendTile(
-                                color: Colors.orange,
-                                title: "Fruit",
-                              ),
-
-                              SizedBox(height: 12),
-
-                              LegendTile(
-                                color: Colors.red,
-                                title: "Others",
-                              ),
-                            ],
+                            children: _mealDistribution
+                                .asMap()
+                                .entries
+                                .map(
+                                  (e) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 10),
+                                    child: LegendTile(
+                                      color: _pieColors[
+                                          e.key % _pieColors.length],
+                                      title: e.value['meal_type'] ?? '',
+                                    ),
+                                  ),
+                                )
+                                .toList(),
                           ),
                         ),
                       ],

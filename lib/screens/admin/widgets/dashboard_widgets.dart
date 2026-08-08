@@ -52,12 +52,16 @@ class GradientStatCard extends StatelessWidget {
 
           const Spacer(),
 
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 28,
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 26,
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
 

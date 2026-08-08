@@ -29,16 +29,24 @@ admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 @admin_required
 def dashboard():
     from models import User
+    import dashboard_service
 
     with SessionLocal() as db:
         total_users = db.query(User).count()
         total_foods = db.query(FoodItem).count()
         total_predictions = db.query(PredictionData).count()
 
+    chart_data = dashboard_service.get_dashboard_data(days=7)
+
     return jsonify({
         "total_users": total_users,
         "total_foods": total_foods,
         "total_predictions": total_predictions,
+        "user_growth": chart_data["user_growth"],
+        "meal_distribution": chart_data["meal_distribution"],
+        "logs_per_day": chart_data["logs_per_day"],
+        "top_foods": chart_data["top_foods"],
+        "today_calories": chart_data["today_calories"],
     }), 200
 
 

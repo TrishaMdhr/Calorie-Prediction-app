@@ -27,7 +27,6 @@ class _SignupScreenState extends State<SignupScreen> {
   final _passCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
   bool _obscure1 = true, _obscure2 = true;
-  bool _remember = false;
   String? _nameError, _emailError, _passError, _confirmError;
 
   bool _validateEmail(String e) {
@@ -246,15 +245,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
-              Row(children: [
-                Checkbox(
-                  value: _remember,
-                  onChanged: (v) => setState(() => _remember = v!),
-                  activeColor: AppTheme.primary,
-                ),
-                const Text('Remember me'),
-              ]),
+
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: _signup,
@@ -322,7 +313,7 @@ class _SignupScreenState extends State<SignupScreen> {
                       context,
                       MaterialPageRoute(builder: (_) => const LoginScreen()),
                     ),
-                    child: Text('LOGIN',
+                    child: const Text('LOGIN',
                         style: TextStyle(
                             color: AppTheme.primary,
                             fontWeight: FontWeight.bold,

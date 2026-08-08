@@ -41,7 +41,7 @@ class _LogFoodScreenState extends State<LogFoodScreen> {
   String _mealType = 'Lunch';
   int _tab = 0;
   final List<String> _mealTypes = [
-    'Breakfast', 'Lunch', 'Dinner', 'Snacks'
+    'Breakfast', 'Lunch', 'Dinner', 'Snack'
   ];
 
   @override

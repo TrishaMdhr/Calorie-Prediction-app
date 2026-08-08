@@ -176,7 +176,11 @@ def get_all_food_logs(db: Session, user_query=None, date_from=None, date_to=None
     if date_to:
         q = q.filter(FoodLog.date <= date_to)
     if meal_type:
-        q = q.filter(FoodLog.meal_type.ilike(meal_type))
+        # Normalize: treat "Snack" and "Snacks" as the same
+        if meal_type.strip().lower() in ("snack", "snacks"):
+            q = q.filter(FoodLog.meal_type.ilike("snack%"))
+        else:
+            q = q.filter(FoodLog.meal_type.ilike(meal_type))
 
     return q.order_by(FoodLog.date.desc(), FoodLog.log_id.desc()).all()
 

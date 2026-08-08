@@ -2,56 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme.dart';
 import '../providers/app_provider.dart';
-import '../config/api_config.dart';
-
-class SettingsScreen extends StatefulWidget {
+class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
-
-  @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
-}
-
-class _SettingsScreenState extends State<SettingsScreen> {
-  late TextEditingController _urlController;
-  String _connectionStatus = '';
-  bool _isTesting = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _urlController = TextEditingController(text: ApiConfig.baseUrl);
-  }
-
-  @override
-  void dispose() {
-    _urlController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _saveAndTest() async {
-    final url = _urlController.text.trim();
-    if (url.isEmpty) return;
-    // Cache provider before any await to avoid BuildContext across async gap
-    final provider = Provider.of<AppProvider>(context, listen: false);
-    await ApiConfig.saveServerUrl(url);
-    setState(() {
-      _isTesting = true;
-      _connectionStatus = 'Testing connection...';
-    });
-    final ok = await provider.checkBackendConnection();
-    setState(() {
-      _isTesting = false;
-      _connectionStatus = ok
-          ? '✅ Connected to $url'
-          : '❌ Could not connect. Check IP and that the backend is running.';
-    });
-  }
-
-  Future<void> _resetUrl() async {
-    await ApiConfig.clearServerUrl();
-    _urlController.text = ApiConfig.baseUrl;
-    setState(() => _connectionStatus = 'Reset to default: ${ApiConfig.baseUrl}');
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -59,129 +11,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        children: [
-          // ── SERVER CONNECTION ────────────────────────
-          _SectionTitle('SERVER CONNECTION'),
-          _SettingsCard(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.wifi,
-                            color: provider.isBackendReachable
-                                ? Colors.green
-                                : Colors.red,
-                            size: 20),
-                        const SizedBox(width: 8),
-                        Text(
-                          provider.isBackendReachable
-                              ? 'Backend reachable'
-                              : 'Backend unreachable',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: provider.isBackendReachable
-                                ? Colors.green
-                                : Colors.red,
-                          ),
-                        ),
-                      ],
+      children: [
+        // ── SERVER CONNECTION ────────────────────────
+        const _SectionTitle('SERVER CONNECTION'),
+        _SettingsCard(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.wifi,
+                    color: provider.isBackendReachable
+                        ? Colors.green
+                        : Colors.red,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    provider.isBackendReachable
+                        ? 'Backend Connected'
+                        : 'Backend Offline',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                      color: provider.isBackendReachable
+                          ? Colors.green
+                          : Colors.red,
                     ),
-                    const SizedBox(height: 10),
-                    const Text(
-                      'Server URL',
-                      style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey),
-                    ),
-                    const SizedBox(height: 6),
-                    TextField(
-                      controller: _urlController,
-                      keyboardType: TextInputType.url,
-                      decoration: InputDecoration(
-                        hintText: 'e.g. http://192.168.1.10:5000',
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10)),
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 10),
-                        suffixIcon: IconButton(
-                          icon: const Icon(Icons.clear, size: 18),
-                          onPressed: () => _urlController.clear(),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    if (_connectionStatus.isNotEmpty)
-                      Text(
-                        _connectionStatus,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: _connectionStatus.startsWith('✅')
-                              ? Colors.green
-                              : _connectionStatus.startsWith('❌')
-                                  ? Colors.red
-                                  : Colors.orange,
-                        ),
-                      ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: _isTesting ? null : _saveAndTest,
-                            icon: _isTesting
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: Colors.white))
-                                : const Icon(Icons.check_circle_outline,
-                                    size: 18),
-                            label: Text(
-                                _isTesting ? 'Testing...' : 'Save & Test'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppTheme.primary,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10)),
-                            ),
-                          ),
-                        ),
-                         const SizedBox(width: 8),
-                        IntrinsicWidth(
-                          child: OutlinedButton(
-                            onPressed: _resetUrl,
-                            style: OutlinedButton.styleFrom(
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10)),
-                            ),
-                            child: const Text('Reset'),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    const Text(
-                      'On physical Android/iOS: enter your PC\'s LAN IP\n'
-                      'e.g. http://192.168.1.10:5000\n'
-                      'Run `ipconfig` on Windows to find your IP.',
-                      style: TextStyle(fontSize: 11, color: Colors.grey),
-                    ),
-                    const SizedBox(height: 10),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
-          ),
-          const SizedBox(height: 20),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
 
           // ── NOTIFICATIONS ───────────────────────────
-          _SectionTitle('NOTIFICATIONS'),
+          const _SectionTitle('NOTIFICATIONS'),
           _SettingsCard(
             children: [
               SwitchListTile(
@@ -202,10 +69,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 20),
 
           // ── FOOD HISTORY ────────────────────────────
-          _SectionTitle('FOOD HISTORY'),
+          const _SectionTitle('FOOD HISTORY'),
           if (provider.todayLogs.isEmpty)
-            _SettingsCard(children: [
-              const ListTile(
+            const _SettingsCard(children: [
+              ListTile(
                 leading: Icon(Icons.restaurant_outlined,
                     color: Colors.grey),
                 title: Text('No food logged today',
@@ -220,7 +87,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   backgroundColor:
                   AppTheme.primary.withAlpha(25),
                   child: Text(log.mealType.isNotEmpty ? log.mealType[0] : '?',
-                      style: TextStyle(
+                      style: const TextStyle(
                           color: AppTheme.primary)),
                 ),
                 title: Text(log.name,
@@ -230,7 +97,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 subtitle: Text(log.mealType),
                 trailing: Text(
                   '${log.calories.toInt()} kcal',
-                  style: TextStyle(
+                  style: const TextStyle(
                       color: AppTheme.primary,
                       fontWeight: FontWeight.bold),
                 ),
@@ -286,28 +153,68 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 20),
 
           // ── ABOUT ───────────────────────────────────
-          _SectionTitle('ABOUT'),
+          const _SectionTitle('ABOUT'),
           _SettingsCard(
             children: [
-              ListTile(
-                leading: const Icon(Icons.info_outline,
+              const ListTile(
+                leading: Icon(Icons.info_outline,
                     color: AppTheme.primary),
-                title: const Text('App Version',
+                title: Text('App Version',
                     style: TextStyle(
                         fontWeight: FontWeight.w600)),
-                trailing: const Text('1.0.0',
+                trailing: Text('1.0.0',
                     style: TextStyle(color: Colors.grey)),
               ),
               const Divider(height: 1, indent: 16),
               ListTile(
-                leading: const Icon(Icons.star_outline,
-                    color: AppTheme.primary),
+                leading: Icon(
+                  provider.appRating > 0
+                      ? Icons.star_rounded
+                      : Icons.star_outline,
+                  color: provider.appRating > 0
+                      ? Colors.amber
+                      : AppTheme.primary,
+                ),
                 title: const Text('Rate the App',
-                    style: TextStyle(
-                        fontWeight: FontWeight.w600)),
-                trailing: const Icon(Icons.chevron_right,
-                    color: Colors.grey),
-                onTap: () {},
+                    style: TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: provider.appRating > 0
+                    ? Text(
+                        'Your rating: ${provider.appRating} / 5 ⭐',
+                        style: TextStyle(
+                            color: Colors.amber.shade800,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12),
+                      )
+                    : null,
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (provider.appRating == 0)
+                      const Text('Tap to rate',
+                          style: TextStyle(color: Colors.grey, fontSize: 13)),
+                    const Icon(Icons.chevron_right, color: Colors.grey),
+                  ],
+                ),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (_) => _RatingDialog(
+                      initialRating: provider.appRating,
+                      onRatingSelected: (rating) {
+                        provider.setAppRating(rating);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Thank you for rating us $rating/5 stars! 🎉',
+                            ),
+                            backgroundColor: Colors.green,
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                },
               ),
               const Divider(height: 1, indent: 16),
               ListTile(
@@ -366,6 +273,143 @@ class _SettingsCard extends StatelessWidget {
         ],
       ),
       child: Column(children: children),
+    );
+  }
+}
+
+// ── Rating Dialog Widget ─────────────────────────────────────────────────────
+class _RatingDialog extends StatefulWidget {
+  final int initialRating;
+  final Function(int) onRatingSelected;
+
+  const _RatingDialog({
+    required this.initialRating,
+    required this.onRatingSelected,
+  });
+
+  @override
+  State<_RatingDialog> createState() => _RatingDialogState();
+}
+
+class _RatingDialogState extends State<_RatingDialog> {
+  late int _selectedRating;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedRating = widget.initialRating > 0 ? widget.initialRating : 5;
+  }
+
+  String _getRatingText(int rating) {
+    switch (rating) {
+      case 1:
+        return 'Needs Improvement';
+      case 2:
+        return 'Fair';
+      case 3:
+        return 'Good';
+      case 4:
+        return 'Very Good';
+      case 5:
+        return 'Excellent!';
+      default:
+        return 'Tap a star to rate';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      title: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.amber.withAlpha(30),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.star_rounded,
+              color: Colors.amber,
+              size: 40,
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Rate Calowrie',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'How is your experience with the app?',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.normal,
+              color: isDark ? Colors.white60 : Colors.grey.shade600,
+            ),
+          ),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(5, (index) {
+              final starNum = index + 1;
+              final isSelected = starNum <= _selectedRating;
+              return GestureDetector(
+                onTap: () => setState(() => _selectedRating = starNum),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Icon(
+                    isSelected
+                        ? Icons.star_rounded
+                        : Icons.star_outline_rounded,
+                    color: isSelected ? Colors.amber : Colors.grey.shade400,
+                    size: 38,
+                  ),
+                ),
+              );
+            }),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            _getRatingText(_selectedRating),
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+              color: AppTheme.primary,
+            ),
+          ),
+        ],
+      ),
+      actionsAlignment: MainAxisAlignment.spaceEvenly,
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            widget.onRatingSelected(_selectedRating);
+            Navigator.pop(context);
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppTheme.primary,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          ),
+          child: const Text('Submit Rating'),
+        ),
+      ],
     );
   }
 }

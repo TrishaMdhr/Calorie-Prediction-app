@@ -6,7 +6,7 @@
 # - Provides `@token_required` decorator to protect routes
 # - Sets request.current_user_id from decoded payload on success
 # =============================================================================
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 
 import jwt
@@ -20,8 +20,8 @@ def create_token(user_id: int, name: str) -> str:
     payload = {
         "user_id": user_id,
         "name": name,
-        "exp": datetime.utcnow() + timedelta(hours=Config.JWT_EXPIRY_HOURS),
-        "iat": datetime.utcnow(),
+        "exp": datetime.now(timezone.utc) + timedelta(hours=Config.JWT_EXPIRY_HOURS),
+        "iat": datetime.now(timezone.utc),
     }
     return jwt.encode(payload, Config.JWT_SECRET_KEY, algorithm=Config.JWT_ALGORITHM)
 

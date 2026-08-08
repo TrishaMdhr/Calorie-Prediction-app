@@ -14,6 +14,7 @@ class AppProvider extends ChangeNotifier {
   List<FoodLog> todayLogs = [];
   List<FoodLog> savedMacros = [];
   bool notificationsEnabled = true;
+  int appRating = 0;
   bool isLoggedIn = false;
   bool get isAdmin => user.role == "admin";
   bool dayCompleted = false;
@@ -70,12 +71,23 @@ class AppProvider extends ChangeNotifier {
     final name = prefs.getString('user_name') ?? '';
     final email = prefs.getString('user_email') ?? '';
     final goal = prefs.getDouble('calorie_goal') ?? 0;
+    final role = prefs.getString('user_role') ?? 'user';
     if (name.isNotEmpty) {
-      user = UserModel(name: name, email: email, calorieGoal: goal);
+      user = UserModel(name: name, email: email, calorieGoal: goal, role: role);
       isLoggedIn = true;
     }
 
+    // App rating
+    appRating = prefs.getInt('app_rating') ?? 0;
+
     notifyListeners();
+  }
+
+  Future<void> setAppRating(int rating) async {
+    appRating = rating;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('app_rating', rating);
   }
 
   Future<void> _saveUsers() async {
@@ -88,6 +100,7 @@ class AppProvider extends ChangeNotifier {
     await prefs.setString('user_name', user.name);
     await prefs.setString('user_email', user.email);
     await prefs.setDouble('calorie_goal', user.calorieGoal);
+    await prefs.setString('user_role', user.role);
     if (_authToken != null) {
       await prefs.setString('auth_token', _authToken!);
     }
@@ -353,6 +366,8 @@ class AppProvider extends ChangeNotifier {
         if (activity.isNotEmpty) user.activityLevel = activity;
         final fitnessGoal = data['fitness_goal']?.toString() ?? '';
         if (fitnessGoal.isNotEmpty) user.fitnessGoal = fitnessGoal;
+        final role = data['role']?.toString() ?? '';
+        if (role.isNotEmpty) user.role = role;
 
         await _saveLocalUserInfo();
         notifyListeners();
